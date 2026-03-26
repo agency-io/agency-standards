@@ -62,6 +62,7 @@ def _load_from_dir(directory: Path, source: str) -> list[Standard]:
                     prompt=data["prompt"],
                     claude_md_section=data.get("claude_md_section", ""),
                     source=source,
+                    tags=data.get("tags", ["general"]),
                 )
             )
         except Exception as e:

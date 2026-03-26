@@ -19,7 +19,8 @@ def run(target: Path, standard_id: str | None = None) -> None:
         return
 
     arch_dir = arch_dirs[0]
-    generated_files = [f for f in arch_dir.glob("test_*.py") if _is_generated(f)]
+    # Glob all files in the arch dir, filter to generated ones (language-agnostic)
+    generated_files = [f for f in arch_dir.iterdir() if f.is_file() and _is_generated(f)]
 
     if standard_id:
         generated_files = [f for f in generated_files if get_standard_id(f.read_text()) == standard_id]

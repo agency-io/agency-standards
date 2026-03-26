@@ -1,40 +1,53 @@
 id: no-magic-strings
 name: No Magic Strings in Assertions
-description: Assertion comparisons must use expected_* and actual_* variables, not inline literals
-languages: [python]
-output_file: test_no_magic_strings.py
+description: Assertion comparisons must use named expected/actual variables, not inline literals
+languages: [python, go, typescript, java]
+tags: [general]
+output_file: test_no_magic_strings
 prompt: |
-  Generate a pytest architecture test that forbids magic string/number literals directly
-  inside assert statements in test files.
+  Generate an architecture test that forbids magic string or number literals directly
+  inside assertion statements in test files.
 
-  The rule: whenever an assert compares two values (assert a == b, assert a != b, etc.),
-  neither side should be a raw string literal or raw numeric literal. Instead the value
-  must be extracted to a variable named expected_* or actual_*.
+  The rule: whenever an assertion compares two values, neither side should be a raw string
+  or number literal. The value must be extracted to a named variable that makes intent clear.
 
-  Exceptions that are allowed (do NOT flag these):
-  - assert result is True / assert result is False / assert result is None
-  - assert len(x) == <number> where the number is an obvious count
-  - assert "key" in result (membership checks with a key string)
-  - assert result  (truthiness checks)
+  Naming convention for the variables:
+  - Python: expected_* and actual_*
+  - Go: expected* and got* (or want* and got*)
+  - TypeScript: expected* and actual*
+  - Java: expected* and actual*
 
-  Use Python's ast module. Walk assert statements in test_*.py files. For ast.Compare nodes,
-  check the comparators and the left value for Constant nodes.
+  Before generating, examine the project context to determine:
+  - The primary language
+  - The test framework and assertion style in use (assert statements, self.assertEqual,
+    t.Equal, expect().toBe(), assertEquals, etc.) — infer from sample test files
+  - The test file naming pattern and directories
+  - Whether the project mixes assertion styles across files
 
-  The test should:
+  Exceptions that are allowed (do NOT flag):
+  - Null/nil/None checks (assert x is None, assertNull(x), etc.)
+  - Boolean truthiness checks (assert x, assertTrue(x))
+  - Length/count checks where the number is obvious (assert len(x) == 2)
+  - Key/field presence checks ("key" in result, hasOwnProperty, containsKey)
+
+  Generate the architecture test in the same language as the project.
+  Use static analysis appropriate for that language to detect violations.
+
+  The architecture test should:
   - Collect all violations before failing
-  - Report: filename:line_number — test_function — literal value found in assertion
+  - Report: filename:line_number — test_name — literal value found in assertion
   - Fail with a clear summary
 
-  Derive test directories from the project context above.
+  Name the output file appropriately for the language.
+  Derive test directories and naming patterns from the project context provided.
 claude_md_section: |
   ## No Magic Strings in Assertions
 
-  Assertion comparisons must use named variables, not inline literals:
+  Extract comparison values to named variables before asserting:
 
   ```python
   # Bad
   assert account["status"] == "active"
-  assert response.status_code == 200
 
   # Good
   expected_status = "active"
@@ -42,5 +55,4 @@ claude_md_section: |
   assert actual_status == expected_status, f"Expected {expected_status!r} but got {actual_status!r}"
   ```
 
-  Every assertion must also include a failure message so failures are self-explaining.
-  The architecture test `tests/architecture/test_no_magic_strings.py` enforces this.
+  The same rule applies in Go (want/got), TypeScript (expected/actual), and Java (expected/actual).

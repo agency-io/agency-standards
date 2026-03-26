@@ -1,0 +1,42 @@
+id: e2e-no-skipped-scenarios
+name: No Skipped Gherkin Scenarios
+description: Gherkin feature files must not contain @skip or @wip tags
+languages: [python, go, typescript, java]
+output_file: test_e2e_no_skipped_scenarios
+tags: [bdd, e2e]
+prompt: |
+  Generate an architecture test that forbids @skip and @wip tags in Gherkin feature files.
+
+  The rule: feature files are the canonical specification of expected behaviour. Scenarios
+  tagged @skip or @wip are not being verified and represent gaps in coverage. These tags
+  must not appear in committed feature files. The only permitted exclusion is @internal
+  (for scenarios requiring internal/private API state that no sequence of public API calls
+  can produce).
+
+  Tags to detect: @skip, @wip, @xfail, @pending (any skip-like tag except @internal)
+
+  Before generating, examine the project context to determine:
+  - The primary language and test framework
+  - Where feature files are located (typically a features/ or specs/ directory, or
+    within test directories — infer from the feature_files list in the project context)
+  - Any project-specific tags that function as skip markers
+
+  Generate the architecture test in the same language as the project.
+  Scan all .feature files found in the project.
+
+  The architecture test should:
+  - Collect all violations before failing
+  - Report: filename:line_number — tag found (@skip/@wip/etc.)
+  - Fail with a summary
+
+  Name the output file appropriately for the language.
+  Derive feature file locations from the project context provided.
+claude_md_section: |
+  ## No Skipped Gherkin Scenarios
+
+  Feature files must not contain @skip, @wip, @xfail, or @pending tags. Skipped scenarios
+  are unverified specification — they erode trust in the suite.
+
+  The only permitted exclusion tag is @internal, reserved for scenarios that require
+  system state that no sequence of public API calls can produce (e.g. a resource already
+  in a DELETING transient state).

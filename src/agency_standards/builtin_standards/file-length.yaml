@@ -1,0 +1,40 @@
+id: file-length
+name: File Length
+description: Source files must not exceed 500 lines — long files indicate a class or module is doing too much
+languages: [python, go, typescript, java]
+output_file: test_file_length
+tags: [general]
+prompt: |
+  Generate an architecture test that enforces a maximum source file length of 500 lines.
+
+  The rule: every file in the source directories must contain 500 lines or fewer (counting
+  all lines including blanks and comments). Files that exceed this are a signal that the
+  module is doing too much and should be split into focused, single-responsibility units.
+
+  Before generating, examine the project context to determine:
+  - The primary language
+  - The test framework in use
+  - The actual source directories to scan (src/, app/, lib/, cmd/, etc.)
+  - File extensions to include for that language (.py, .go, .ts, .java, etc.)
+  - Files or directories to exclude (generated files, vendored code, migration files,
+    __init__.py files that are just re-exports, .d.ts declaration files, etc.)
+
+  Generate the architecture test in the same language as the project.
+  Count lines using appropriate file reading for the language.
+
+  The architecture test should:
+  - Scan source directories only, not test directories
+  - Collect all violations before failing
+  - Report: filename — N lines (limit: 500)
+  - Fail with a summary of all violations
+
+  Name the output file appropriately for the language.
+  Derive source directories from the project context provided.
+claude_md_section: |
+  ## File Length
+
+  Source files must not exceed 500 lines. A file that is growing beyond this is a signal
+  to split it into smaller, focused modules.
+
+  Count includes blank lines and comments. Generated files, vendored code, and
+  single-purpose re-export files are exempt.

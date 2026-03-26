@@ -1,33 +1,50 @@
 id: aaa-comments
 name: AAA Comments
-description: Every unit and integration test method must have explicit # Arrange, # Act, # Assert comments
-languages: [python]
-output_file: test_aaa_comments.py
+description: Every unit and integration test method must have explicit Arrange / Act / Assert sections
+languages: [python, go, typescript, java]
+tags: [general]
+output_file: test_aaa_comments
 prompt: |
-  Generate a pytest architecture test that enforces the AAA (Arrange / Act / Assert) pattern.
+  Generate an architecture test that enforces the AAA (Arrange / Act / Assert) pattern.
 
-  The rule: every test method in the project's unit and integration test files must contain
-  at least # Arrange, # Act, and # Assert as inline comments. The # Act section must contain
-  exactly one statement (the thing being tested). Empty sections still need the comment.
+  The rule: every test function or method in the project's unit and integration test files
+  must contain explicit Arrange, Act, and Assert sections. The Act section must contain
+  exactly one operation — the thing being tested. Empty sections still need the marker.
 
-  Use Python's ast module to walk every test_*.py file in the unit and integration directories.
-  For each function whose name starts with "test_", parse the function body and verify that
-  the comment strings appear somewhere in the source lines of that function.
+  Before generating, examine the project context to determine:
+  - The primary language (Python, Go, TypeScript, Java, etc.)
+  - The test framework in use — infer from the build file (pyproject.toml, go.mod, package.json,
+    build.gradle, pom.xml) and from the sample test files
+  - The comment style for that language (# for Python, // for Go/TypeScript/Java)
+  - The test file naming pattern (test_*.py, *_test.go, *.test.ts, *Test.java, etc.)
+  - Whether the project uses BDD (Given/When/Then) — skip those files; AAA applies only to
+    unit/integration tests, not BDD step files
+  - The actual directory paths for unit and integration tests
 
-  The test should:
+  Generate the architecture test in the same language and using the same test framework
+  the project uses. Use static analysis appropriate for that language:
+  - Python: ast module
+  - Go: go/ast or string scanning
+  - TypeScript: string/regex scanning or ts-morph
+  - Java: string scanning or JavaParser
+
+  The architecture test should:
   - Collect ALL violations across all test files before failing
-  - Report each violation as: filename:line_number — test_function_name — missing: [list]
-  - Fail with a clear summary message listing all violations
-  - Be robust to nested classes (test classes containing test methods)
+  - Report each as: filename:line_number — test_name — missing: [list of missing sections]
+  - Fail with a clear summary listing all violations
+  - Skip BDD step files
+  - Be robust to nested test classes or table-driven tests
 
-  Use pathlib.Path for all file operations. Derive the test directories from the project root
-  using the actual structure observed in the project context above.
+  Name the output file appropriately for the language (e.g. test_aaa_comments.py, aaa_comments_test.go,
+  aaa-comments.test.ts, AaaCommentsTest.java).
+  Derive all directory paths from the project context provided.
 claude_md_section: |
   ## AAA Pattern (Arrange / Act / Assert)
 
-  Every unit and integration test method must have three explicit comment sections:
+  Every unit and integration test must have three explicit sections:
 
   ```python
+  # Python example
   def test_something(self):
       # Arrange
       expected_value = "hello"
@@ -40,8 +57,8 @@ claude_md_section: |
   ```
 
   Rules:
-  - `# Arrange`, `# Act`, `# Assert` comments are mandatory in every test method
-  - Empty sections still need the comment (write `pass` if truly nothing to arrange)
-  - `# Act` contains exactly one operation — the thing being tested
-  - `# Assert` contains only assertions, no additional logic
-  - The architecture test `tests/architecture/test_aaa_comments.py` enforces this automatically
+  - Arrange, Act, Assert markers are mandatory in every test method
+  - Empty sections still need the marker
+  - Act contains exactly one operation
+  - Assert contains only assertions, no additional logic
+  - Does not apply to BDD step files (Given/When/Then)

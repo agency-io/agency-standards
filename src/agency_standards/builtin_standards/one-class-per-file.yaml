@@ -1,0 +1,51 @@
+id: one-class-per-file
+name: One Class Per File
+description: Each source file should define at most one public class
+languages: [python, go, typescript, java]
+tags: [general]
+output_file: test_one_class_per_file
+prompt: |
+  Generate an architecture test that enforces one public class per source file.
+
+  The rule: each file in the source directories should define at most one public class.
+  Having many classes in one file makes the codebase harder to navigate and tends to
+  indicate a file is doing too much.
+
+  Before generating, examine the project context to determine:
+  - The primary language
+  - The test framework in use
+  - The actual source directories to scan
+  - What counts as a "public" class in that language:
+    - Python: any class not prefixed with _ (private convention)
+    - Go: any exported struct (starts with uppercase)
+    - TypeScript: any exported class
+    - Java: public class declarations
+  - Exceptions that are acceptable in the language (e.g. private inner classes, enums,
+    dataclasses/value objects that always accompany a main class, exception classes defined
+    alongside the class that raises them)
+
+  Do NOT flag:
+  - Test files (only scan source directories)
+  - Files containing only one class
+  - Inner/nested classes that are private/unexported
+  - Exception/error classes paired with their parent class (common pattern)
+  - Enum files with multiple enum values (not classes)
+
+  Generate the architecture test in the same language as the project.
+  Use static analysis appropriate for that language.
+
+  The architecture test should:
+  - Scan source directories only
+  - Collect all violations before failing
+  - Report: filename — N classes found: [ClassName1, ClassName2, ...]
+  - Fail with a summary
+
+  Name the output file appropriately for the language.
+  Derive source directories from the project context provided.
+claude_md_section: |
+  ## One Class Per File
+
+  Each source file should define at most one public class. Private/inner helper classes
+  are acceptable when they are tightly coupled to the main class and not used elsewhere.
+
+  Split files that contain multiple independent public classes into separate files.

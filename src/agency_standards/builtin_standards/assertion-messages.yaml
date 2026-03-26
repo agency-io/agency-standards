@@ -1,42 +1,60 @@
 id: assertion-messages
 name: Assertion Failure Messages
-description: Every assert statement must include a human-readable failure message
-languages: [python]
-output_file: test_assertion_messages.py
+description: Every assertion must include a human-readable failure message
+languages: [python, go, typescript, java]
+tags: [general]
+output_file: test_assertion_messages
 prompt: |
-  Generate a pytest architecture test that enforces that every `assert` statement in unit
-  and integration test files includes a failure message (the second argument to assert).
+  Generate an architecture test that enforces that every assertion in unit and integration
+  test files includes a human-readable failure message.
 
-  Python assert syntax: `assert <expression>, <message>`
+  The rule varies by language and framework:
+  - Python assert: `assert expr, "message"` — the second argument is the message
+  - Python unittest: `self.assertEqual(a, b, msg="message")` — msg= argument required
+  - Go testing: `t.Errorf("expected %v but got %v", want, got)` — message already required by style
+  - Go testify: `assert.Equal(t, want, got, "message")` — third argument is message
+  - TypeScript Jest/Vitest: `expect(actual).toBe(expected)` — add `.withMessage()` or use
+    a custom matcher; flag assertions that have no surrounding comment or description
+  - Java JUnit 5: `assertEquals(expected, actual, "message")` — third argument required
+  - Java JUnit 4: `assertEquals("message", expected, actual)` — first argument required
 
-  The rule: every assert statement must have a message argument. The only exceptions are:
-  - `assert result is None` / `assert result is not None` — these are self-explanatory
-  - `assert result` (simple truthiness) — allowed if the variable name is descriptive enough
+  Before generating, examine the project context to determine:
+  - The primary language
+  - The test framework and assertion style — infer from the build file and sample test files
+  - Whether the project mixes assertion styles
+  - The test file naming pattern and directories
+  - Whether BDD step files are present — skip those
 
-  Use Python's ast module. Walk ast.Assert nodes. Check that node.msg is not None for
-  assert statements that use comparison operators (==, !=, <, >, in, not in, is, is not).
+  For frameworks where failure messages are optional (Python assert, Java JUnit), enforce
+  that every comparison assertion has a message. For frameworks where messages are built in
+  to the output format (Go t.Errorf), generate a test that passes with a note.
 
-  The test should:
+  Exceptions allowed:
+  - Null/nil/None/undefined checks
+  - Simple boolean truthiness checks
+  - BDD step files
+
+  Generate the architecture test in the same language as the project.
+
+  The architecture test should:
   - Collect all violations before failing
-  - Report: filename:line_number — test_function_name — assert without message
+  - Report: filename:line_number — test_name — assertion without message
   - Fail with a summary
 
-  Derive test directories from the project context above.
+  Name the output file appropriately for the language.
+  Derive directories from the project context provided.
 claude_md_section: |
   ## Assertion Failure Messages
 
-  Every assert that compares values must include a failure message:
+  Every comparison assertion must include a failure message:
 
   ```python
-  # Bad
+  # Python — bad
   assert actual_count == expected_count
 
-  # Good
-  assert actual_count == expected_count, f"Expected {expected_count} items but got {actual_count}"
+  # Python — good
+  assert actual_count == expected_count, f"Expected {expected_count} but got {actual_count}"
   ```
 
-  For existence/boolean checks, include context:
-  ```python
-  assert actual_value is not None, "Expected value to be set but was None"
-  assert actual_flag, "Expected flag to be True after processing"
-  ```
+  This applies across languages: msg= in unittest, the message argument in JUnit, the
+  description string in testify, etc.

@@ -15,34 +15,58 @@ from ..standards.loader import load_all
 console = Console()
 
 
-def run(target: Path) -> None:
+def run(target: Path, yes: bool = False) -> None:
     console.print(Panel(f"[bold]agency-standards init[/bold] v{__version__}", expand=False))
 
     ctx = inspect(target)
     _print_project_summary(ctx)
 
-    if not questionary.confirm("Proceed with this project?", default=True).ask():
+    if not yes and not questionary.confirm("Proceed with this project?", default=True).ask():
         raise typer.Abort()
 
-    available = [s for s in load_all() if "python" in s.languages]
+    primary_lang = ctx.languages[0] if ctx.languages else "python"
+    available = [s for s in load_all() if primary_lang in s.languages]
     if not available:
         console.print("[red]No standards available.[/red]")
         raise typer.Exit(1)
 
-    selected_ids = questionary.checkbox(
-        "Select standards to apply:",
-        choices=[
+    # Group choices: general standards always shown; bdd/e2e standards only if BDD detected
+    general = [s for s in available if not any(t in ("bdd", "e2e") for t in s.tags)]
+    bdd_standards = [s for s in available if any(t in ("bdd", "e2e") for t in s.tags)]
+
+    if bdd_standards:
+        if ctx.uses_bdd:
+            console.print(f"[dim]BDD detected ({len(ctx.feature_files)} feature files, "
+                          f"{len(ctx.step_dirs)} step dirs) — BDD standards included[/dim]")
+        else:
+            console.print("[dim]No BDD detected — BDD/E2E standards hidden.[/dim]")
+
+    default_ids = [s.id for s in general] + ([s.id for s in bdd_standards] if ctx.uses_bdd else [])
+
+    if yes:
+        selected_ids = default_ids
+        console.print(f"[dim]--yes: selecting all {len(selected_ids)} applicable standards[/dim]")
+    else:
+        choices = [
             questionary.Choice(title=f"{s.name} — {s.description}", value=s.id)
-            for s in available
-        ],
-        default=[s.id for s in available],
-    ).ask()
+            for s in general
+        ]
+        if ctx.uses_bdd:
+            choices += [
+                questionary.Choice(title=f"[BDD] {s.name} — {s.description}", value=s.id)
+                for s in bdd_standards
+            ]
+        selected_ids = questionary.checkbox(
+            "Select standards to apply:",
+            choices=choices,
+            default=default_ids,
+        ).ask()
 
     if not selected_ids:
         console.print("[yellow]No standards selected. Nothing to do.[/yellow]")
         raise typer.Exit()
 
-    custom_description = questionary.text(
+    custom_description = "" if yes else questionary.text(
         "Add a custom standard? (describe in plain English, or leave blank to skip):",
         default="",
     ).ask()
@@ -60,7 +84,7 @@ def run(target: Path) -> None:
     console.print(f"\nGenerating architecture tests in [cyan]{arch_dir.relative_to(target)}[/cyan]")
 
     for standard in selected:
-        _generate_and_write_test(standard, ctx, arch_dir)
+        _generate_and_write_test(standard, ctx, arch_dir, overwrite=yes)
 
     _update_claude_md(target, selected, ctx)
 
@@ -128,18 +152,23 @@ def _generate_custom_standard(description: str, ctx: ProjectContext) -> Standard
     return custom
 
 
-def _generate_and_write_test(standard: Standard, ctx: ProjectContext, arch_dir: Path) -> None:
-    dest = arch_dir / standard.output_file
+def _generate_and_write_test(
+    standard: Standard, ctx: ProjectContext, arch_dir: Path, overwrite: bool = False
+) -> None:
+    from ..generator import resolve_output_filename
 
-    if dest.exists():
-        overwrite = questionary.confirm(
-            f"{standard.output_file} already exists. Regenerate?", default=False
+    filename = resolve_output_filename(standard, ctx)
+    dest = arch_dir / filename
+
+    if dest.exists() and not overwrite:
+        do_overwrite = questionary.confirm(
+            f"{filename} already exists. Regenerate?", default=False
         ).ask()
-        if not overwrite:
-            console.print(f"  [dim]Skipped {standard.output_file}[/dim]")
+        if not do_overwrite:
+            console.print(f"  [dim]Skipped {filename}[/dim]")
             return
 
-    console.print(f"  Generating [cyan]{standard.output_file}[/cyan]...", end=" ")
+    console.print(f"  Generating [cyan]{filename}[/cyan]...", end=" ")
 
     try:
         code = generate_test(standard, ctx)

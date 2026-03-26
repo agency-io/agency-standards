@@ -23,10 +23,11 @@ def init(
         default=Path("."),
         help="Project directory to initialise. Defaults to current directory.",
     ),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Accept all defaults, skip prompts."),
 ) -> None:
     """Wizard: inspect a project and generate architecture tests + CLAUDE.md."""
     from .commands.init_cmd import run
-    run(target.resolve())
+    run(target.resolve(), yes=yes)
 
 
 @app.command()

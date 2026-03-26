@@ -1,49 +1,62 @@
 id: file-naming
 name: Test File Naming
-description: Test files must follow the pattern test_<subject>_<scenario>.py describing what is tested and under what condition
-languages: [python]
-output_file: test_file_naming.py
+description: Test files must follow a consistent naming pattern describing what is tested and under what condition
+languages: [python, go, typescript, java]
+tags: [general]
+output_file: test_file_naming
 prompt: |
-  Generate a pytest architecture test that enforces test file naming conventions.
+  Generate an architecture test that enforces test file naming conventions.
 
-  The rule: test files must be named `test_<subject>_<scenario>.py` where:
-  - <subject> is the module, class, or concept being tested (e.g. account_repository, manifest_serialiser)
-  - <scenario> is the operation or situation (e.g. create, list, when_account_missing)
+  The goal: test file names should describe both WHAT is being tested and UNDER WHAT CONDITION,
+  not just mirror the source module name.
 
-  Allowed exceptions (do NOT flag):
-  - __init__.py
-  - conftest.py
-  - Files named exactly `test_<subject>.py` with no scenario (single-concern files are fine)
-  - constants.py, client.py, _helpers.py (support files)
+  Before generating, examine the project context to determine:
+  - The primary language
+  - The test framework and its required naming conventions:
+    - Python: test_*.py or *_test.py
+    - Go: *_test.go (required by the toolchain — naming within that is the concern)
+    - TypeScript: *.test.ts, *.spec.ts
+    - Java: *Test.java, *Spec.java
+  - The actual naming pattern used in existing test files — infer from sample files
+  - The test directories
+  - Support files that should be excluded from the check (conftest.py, __init__.py,
+    constants.py, client.py, helpers files, step definition files, fixtures, etc.)
 
-  The check should flag:
-  - Test files with generic names: test_models.py, test_utils.py, test_helpers.py (too broad)
-  - Test files that don't follow snake_case
+  Flag files where the name is too generic — where the name describes a whole module rather
+  than a specific area or operation. Generic names to flag (adapted to the language's convention):
+  - test_models, test_utils, test_helpers, test_main, test_core, models_test, utils_test
+  - ModelsTest.java, UtilsTest.java
+  - models.test.ts, utils.test.ts
 
-  Use pathlib.Path to find all test_*.py files in the test directories observed in this project.
-  Check that each filename follows the pattern and is not on the too-generic list.
+  Do NOT flag:
+  - Support/fixture/configuration files
+  - Files that follow the project's pattern with a clear subject and scenario
+  - Files that have a single focused subject even without an explicit scenario suffix
 
-  The test should:
+  Generate the architecture test in the same language as the project.
+  Use file system traversal appropriate for that language.
+
+  The architecture test should:
   - Collect all violations before failing
-  - Report: filepath — reason
+  - Report: filepath — reason (too generic / wrong pattern)
   - Fail with a summary
 
-  Derive test directories and naming patterns from the project context and sample files above.
+  Name the output file appropriately for the language.
+  Derive everything — directories, patterns, exclusions — from the project context provided.
 claude_md_section: |
   ## Test File Naming
 
-  Test files should be named `test_<subject>_<scenario>.py`:
+  Test file names should describe both what is tested and under what condition:
 
   ```
-  # Good
+  # Good (Python)
   test_account_repository_create.py
   test_manifest_serialiser_when_empty.py
-  test_ou_models_validation.py
 
   # Avoid — too generic
   test_models.py
   test_utils.py
-  test_helpers.py
   ```
 
-  One test file per logical area. Large subject areas should be split by operation.
+  The same principle applies in Go, TypeScript, and Java — the name should be specific,
+  not just a mirror of the source module.

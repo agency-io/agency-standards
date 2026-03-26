@@ -18,6 +18,7 @@ def inspect(root: Path) -> ProjectContext:
     _collect_existing_arch_tests(ctx)
     _load_pyproject(ctx)
     _detect_project_type(ctx)
+    _detect_bdd(ctx)
     return ctx
 
 
@@ -100,6 +101,30 @@ def _load_pyproject(ctx: ProjectContext) -> None:
             ctx.pyproject = tomllib.loads(backend_pyproject.read_text())
         except Exception:
             ctx.pyproject = {}
+
+
+def _detect_bdd(ctx: ProjectContext) -> None:
+    # Feature files — Gherkin
+    ctx.feature_files = sorted(ctx.root.rglob("*.feature"))
+    # Step directories — given/ when/ then/ pattern
+    for d in ctx.root.rglob("given"):
+        if d.is_dir():
+            ctx.step_dirs.append(d)
+    for d in ctx.root.rglob("when"):
+        if d.is_dir():
+            ctx.step_dirs.append(d)
+    for d in ctx.root.rglob("then"):
+        if d.is_dir():
+            ctx.step_dirs.append(d)
+    # Also detect via dependencies
+    deps_str = ""
+    project = ctx.pyproject.get("project", {})
+    all_deps = project.get("dependencies", [])
+    for group in ctx.pyproject.get("dependency-groups", {}).values():
+        all_deps += [d for d in group if isinstance(d, str)]
+    deps_str = " ".join(all_deps).lower()
+    has_bdd_dep = any(k in deps_str for k in ("pytest-bdd", "behave", "cucumber", "godog"))
+    ctx.uses_bdd = bool(ctx.feature_files or ctx.step_dirs or has_bdd_dep)
 
 
 def _detect_project_type(ctx: ProjectContext) -> None:

@@ -1,0 +1,46 @@
+id: e2e-no-direct-http
+name: E2E Steps Use CLI or SDK, Not Direct HTTP
+description: E2E step definitions must not import or use raw HTTP clients — use the CLI runner or SDK instead
+languages: [python, go, typescript, java]
+output_file: test_e2e_no_direct_http
+tags: [bdd, e2e]
+prompt: |
+  Generate an architecture test that forbids direct HTTP client imports in E2E step definition files.
+
+  The rule: E2E step definitions must interact with the system under test through the CLI runner
+  or the official SDK client — not by making raw HTTP requests. Using raw HTTP in E2E tests
+  couples the test to internal implementation details and bypasses the interface being tested.
+
+  HTTP client libraries to detect (adapt to the project's language):
+  - Python: `import httpx`, `import requests`, `import urllib.request`, `from httpx import`,
+    `from requests import`
+  - TypeScript/JavaScript: `import axios`, `import fetch`, `require('node-fetch')`,
+    `require('axios')`, raw `http.request`
+  - Go: `net/http` imports in step definition files (not in client helpers)
+  - Java: `HttpClient`, `OkHttpClient`, `RestTemplate` in step definition files
+
+  Before generating, examine the project context to determine:
+  - The primary language and BDD framework
+  - Where step definition files are located (given/, when/, then/ directories)
+  - The approved interaction method for this project (lws CLI invocation, boto3, SDK client, etc.)
+  - Any legitimate exceptions (e.g. a dedicated client.py/TestClient that wraps HTTP — that
+    file is allowed; the rule applies to step files in given/when/then, not client helpers)
+
+  Generate the architecture test in the same language as the project.
+
+  The architecture test should:
+  - Scan step definition files only (given/, when/, then/ dirs) — NOT client.py or helper files
+  - Collect all violations before failing
+  - Report: filename — direct HTTP import found
+  - Fail with a summary
+
+  Name the output file appropriately for the language.
+  Derive step directories from the project context provided.
+claude_md_section: |
+  ## E2E Steps Use CLI or SDK, Not Direct HTTP
+
+  E2E step definitions must not import raw HTTP client libraries (httpx, requests, axios,
+  net/http, HttpClient, etc.). Instead:
+  - Use the CLI runner (e.g. `lws_invoke`, `assert_invoke`) for Given/When/Then steps
+  - Use the official SDK client via the TestClient helper
+  - Raw HTTP belongs in the TestClient (client.py), not in step files

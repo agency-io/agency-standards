@@ -12,6 +12,7 @@ class Standard:
     prompt: str
     claude_md_section: str
     source: str = "builtin"  # builtin | local | custom
+    tags: list[str] = field(default_factory=list)  # general | bdd | e2e
 
 
 @dataclass
@@ -26,6 +27,9 @@ class ProjectContext:
     project_type: str = "unknown"  # api | cli | library | unknown
     pyproject: dict = field(default_factory=dict)
     existing_arch_tests: list[Path] = field(default_factory=list)
+    uses_bdd: bool = False
+    feature_files: list[Path] = field(default_factory=list)
+    step_dirs: list[Path] = field(default_factory=list)  # given/ when/ then/ dirs
 
     def summary(self) -> str:
         lines = [
@@ -42,6 +46,12 @@ class ProjectContext:
             + ("..." if len(self.integration_test_files) > 5 else ""),
             f"Existing arch tests: {[p.name for p in self.existing_arch_tests]}",
         ]
+        lines.append(f"Uses BDD: {self.uses_bdd}")
+        if self.feature_files:
+            lines.append(f"Feature files ({len(self.feature_files)}): "
+                + ", ".join(p.name for p in self.feature_files[:5]))
+        if self.step_dirs:
+            lines.append(f"Step dirs: {[str(p.relative_to(self.root)) for p in self.step_dirs[:6]]}")
         if self.pyproject:
             deps = self.pyproject.get("project", {}).get("dependencies", [])
             lines.append(f"Dependencies: {deps[:10]}")

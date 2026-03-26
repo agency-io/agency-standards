@@ -101,34 +101,72 @@ def get_standard_id(content: str) -> str | None:
     return match.group(1) if match else None
 
 
+def resolve_output_filename(standard: Standard, ctx: ProjectContext) -> str:
+    """Derive a language-appropriate filename from the standard's output_file base name."""
+    base = standard.output_file  # e.g. "test_aaa_comments" (no extension)
+    if "." in base:
+        return base  # already has an extension, use as-is
+
+    lang = ctx.languages[0] if ctx.languages else "python"
+
+    if lang == "go":
+        # Go: base name without test_ prefix + _test.go
+        # e.g. test_aaa_comments -> aaa_comments_test.go
+        name = base.removeprefix("test_")
+        return f"{name}_test.go"
+    elif lang == "typescript":
+        name = base.removeprefix("test_").replace("_", "-")
+        return f"{name}.test.ts"
+    elif lang == "java":
+        # Convert snake_case to PascalCase + Test.java
+        parts = base.removeprefix("test_").split("_")
+        pascal = "".join(p.capitalize() for p in parts)
+        return f"{pascal}Test.java"
+    else:
+        # Python and anything else: test_*.py
+        if not base.startswith("test_"):
+            base = f"test_{base}"
+        return f"{base}.py"
+
+
 def _build_prompt(standard: Standard, ctx: ProjectContext) -> str:
     sample_tests = ctx.sample_test_source()
     sample_src = ctx.sample_src_source()
 
     test_dirs_str = ", ".join(str(p.relative_to(ctx.root)) for p in ctx.test_dirs)
     src_dirs_str = ", ".join(str(p.relative_to(ctx.root)) for p in ctx.src_dirs)
+    primary_lang = ctx.languages[0] if ctx.languages else "unknown"
+
+    # Describe the build/package file present so Claude knows what to look at
+    build_files = []
+    for name in ("pyproject.toml", "go.mod", "package.json", "build.gradle", "pom.xml"):
+        if (ctx.root / name).exists():
+            build_files.append(name)
+    build_files_str = ", ".join(build_files) or "none found"
 
     return f"""{standard.prompt}
 
 Project context:
 {ctx.summary()}
 
+Primary language: {primary_lang}
+Build/package files present: {build_files_str}
 Test directories: {test_dirs_str}
 Source directories: {src_dirs_str}
 
-Sample existing test files (for context on style and naming):
+Sample existing test files (for context on framework, style, and naming):
 {sample_tests or "(no existing test files found)"}
 
 Sample source files (for context on module structure):
 {sample_src or "(no source files found)"}
 
 Requirements:
-- Output ONLY valid Python code, no markdown fences, no explanation
-- The file must work with pytest discovery (test functions or test classes)
-- Use Python's ast module for static analysis where appropriate
+- Output ONLY valid source code in the project's primary language, no markdown fences, no explanation
+- The architecture test must be runnable using the project's existing test framework and toolchain
+- Use static analysis appropriate for the language — do not assume a specific library is available
 - Be specific to this project's actual directory structure and file patterns
-- Add a descriptive docstring explaining what the test enforces
-- Each test method should have a clear failure message
+- Add a descriptive comment or docstring explaining what the test enforces
+- Each assertion or failure output should include a clear human-readable message
 """
 
 

@@ -1,43 +1,58 @@
 id: no-bare-except
-name: No Bare Except
-description: No bare except clauses in source code — always catch a specific exception type
-languages: [python]
-output_file: test_no_bare_except.py
+name: No Bare Except / Catch-All Error Handling
+description: Error handlers must always specify the exception or error type — no catch-all handlers
+languages: [python, go, typescript, java]
+tags: [general]
+output_file: test_no_bare_except
 prompt: |
-  Generate a pytest architecture test that forbids bare `except:` clauses in the project's
-  source code (not tests).
+  Generate an architecture test that forbids untyped catch-all error handlers in the
+  project's source code (not tests).
 
-  A bare except is `except:` with no exception type specified. This hides bugs and swallows
-  KeyboardInterrupt and SystemExit. Every except clause must name at least one exception type,
-  e.g. `except ValueError:` or `except (KeyError, TypeError):`.
+  The rule varies by language but the intent is the same — always name what you are catching:
+  - Python: forbid bare `except:` with no exception type
+  - Go: not applicable (Go uses explicit error values, not exceptions) — skip this standard
+  - TypeScript/JavaScript: forbid `catch(e)` where e is never narrowed or typed, or
+    empty catch blocks `catch {}` — flag catch blocks where the error is ignored entirely
+  - Java: forbid `catch (Exception e)` or `catch (Throwable e)` at the top level where
+    a more specific type would be appropriate; always flag empty catch blocks
 
-  Use Python's ast module to walk every .py file in the source directories.
-  For each ast.ExceptHandler node, check that node.type is not None.
+  Before generating, examine the project context to determine:
+  - The primary language
+  - Whether the language uses exceptions or error values
+  - The actual source directories to scan (src/, app/, lib/, cmd/, or similar)
+  - The test framework to use for the architecture test itself
 
-  The test should:
+  If the language does not use exceptions (e.g. Go), generate a test that passes
+  immediately with a skip message explaining why the check is not applicable.
+
+  Generate the architecture test in the same language as the project.
+  Use static analysis appropriate for that language to detect violations.
+
+  The architecture test should:
+  - Scan source directories only, not test directories
   - Collect ALL violations before failing
-  - Report each as: filename:line_number — bare except found
-  - Fail with a summary of all violations
-  - Skip __pycache__ directories and .pyc files
+  - Report each as: filename:line_number — bare/untyped handler found
+  - Fail with a summary
 
-  Use pathlib.Path for file discovery. Derive source directories from the project context above.
+  Name the output file appropriately for the language.
+  Derive source directories from the project context provided.
 claude_md_section: |
-  ## No Bare Except
+  ## No Bare / Catch-All Error Handling
 
-  Never use a bare `except:` clause in source code. Always name the exception type:
+  Always name the specific exception or error type you are handling:
 
   ```python
-  # Bad
+  # Python — bad
   try:
       do_something()
   except:
       pass
 
-  # Good
+  # Python — good
   try:
       do_something()
   except ValueError as e:
       handle(e)
   ```
 
-  The architecture test `tests/architecture/test_no_bare_except.py` enforces this automatically.
+  Empty catch blocks that silently swallow errors are also forbidden.
