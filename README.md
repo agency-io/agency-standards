@@ -9,7 +9,7 @@ AI-powered architecture governance for Python projects. Automatically generates 
 ## Installation
 
 ```bash
-pip install agency-standards
+uv tool install agency-standards
 ```
 
 ## Quick Start
