@@ -1,0 +1,49 @@
+id: file-naming
+name: Test File Naming
+description: Test files must follow the pattern test_<subject>_<scenario>.py describing what is tested and under what condition
+languages: [python]
+output_file: test_file_naming.py
+prompt: |
+  Generate a pytest architecture test that enforces test file naming conventions.
+
+  The rule: test files must be named `test_<subject>_<scenario>.py` where:
+  - <subject> is the module, class, or concept being tested (e.g. account_repository, manifest_serialiser)
+  - <scenario> is the operation or situation (e.g. create, list, when_account_missing)
+
+  Allowed exceptions (do NOT flag):
+  - __init__.py
+  - conftest.py
+  - Files named exactly `test_<subject>.py` with no scenario (single-concern files are fine)
+  - constants.py, client.py, _helpers.py (support files)
+
+  The check should flag:
+  - Test files with generic names: test_models.py, test_utils.py, test_helpers.py (too broad)
+  - Test files that don't follow snake_case
+
+  Use pathlib.Path to find all test_*.py files in the test directories observed in this project.
+  Check that each filename follows the pattern and is not on the too-generic list.
+
+  The test should:
+  - Collect all violations before failing
+  - Report: filepath — reason
+  - Fail with a summary
+
+  Derive test directories and naming patterns from the project context and sample files above.
+claude_md_section: |
+  ## Test File Naming
+
+  Test files should be named `test_<subject>_<scenario>.py`:
+
+  ```
+  # Good
+  test_account_repository_create.py
+  test_manifest_serialiser_when_empty.py
+  test_ou_models_validation.py
+
+  # Avoid — too generic
+  test_models.py
+  test_utils.py
+  test_helpers.py
+  ```
+
+  One test file per logical area. Large subject areas should be split by operation.

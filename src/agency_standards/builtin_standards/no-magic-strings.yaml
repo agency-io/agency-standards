@@ -1,0 +1,46 @@
+id: no-magic-strings
+name: No Magic Strings in Assertions
+description: Assertion comparisons must use expected_* and actual_* variables, not inline literals
+languages: [python]
+output_file: test_no_magic_strings.py
+prompt: |
+  Generate a pytest architecture test that forbids magic string/number literals directly
+  inside assert statements in test files.
+
+  The rule: whenever an assert compares two values (assert a == b, assert a != b, etc.),
+  neither side should be a raw string literal or raw numeric literal. Instead the value
+  must be extracted to a variable named expected_* or actual_*.
+
+  Exceptions that are allowed (do NOT flag these):
+  - assert result is True / assert result is False / assert result is None
+  - assert len(x) == <number> where the number is an obvious count
+  - assert "key" in result (membership checks with a key string)
+  - assert result  (truthiness checks)
+
+  Use Python's ast module. Walk assert statements in test_*.py files. For ast.Compare nodes,
+  check the comparators and the left value for Constant nodes.
+
+  The test should:
+  - Collect all violations before failing
+  - Report: filename:line_number — test_function — literal value found in assertion
+  - Fail with a clear summary
+
+  Derive test directories from the project context above.
+claude_md_section: |
+  ## No Magic Strings in Assertions
+
+  Assertion comparisons must use named variables, not inline literals:
+
+  ```python
+  # Bad
+  assert account["status"] == "active"
+  assert response.status_code == 200
+
+  # Good
+  expected_status = "active"
+  actual_status = account["status"]
+  assert actual_status == expected_status, f"Expected {expected_status!r} but got {actual_status!r}"
+  ```
+
+  Every assertion must also include a failure message so failures are self-explaining.
+  The architecture test `tests/architecture/test_no_magic_strings.py` enforces this.

@@ -1,0 +1,43 @@
+id: no-bare-except
+name: No Bare Except
+description: No bare except clauses in source code — always catch a specific exception type
+languages: [python]
+output_file: test_no_bare_except.py
+prompt: |
+  Generate a pytest architecture test that forbids bare `except:` clauses in the project's
+  source code (not tests).
+
+  A bare except is `except:` with no exception type specified. This hides bugs and swallows
+  KeyboardInterrupt and SystemExit. Every except clause must name at least one exception type,
+  e.g. `except ValueError:` or `except (KeyError, TypeError):`.
+
+  Use Python's ast module to walk every .py file in the source directories.
+  For each ast.ExceptHandler node, check that node.type is not None.
+
+  The test should:
+  - Collect ALL violations before failing
+  - Report each as: filename:line_number — bare except found
+  - Fail with a summary of all violations
+  - Skip __pycache__ directories and .pyc files
+
+  Use pathlib.Path for file discovery. Derive source directories from the project context above.
+claude_md_section: |
+  ## No Bare Except
+
+  Never use a bare `except:` clause in source code. Always name the exception type:
+
+  ```python
+  # Bad
+  try:
+      do_something()
+  except:
+      pass
+
+  # Good
+  try:
+      do_something()
+  except ValueError as e:
+      handle(e)
+  ```
+
+  The architecture test `tests/architecture/test_no_bare_except.py` enforces this automatically.

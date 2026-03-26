@@ -1,0 +1,41 @@
+[project]
+name = "agency-standards"
+version = "0.1.0"
+description = "AI-powered architecture governance CLI for Python projects"
+requires-python = ">=3.11"
+dependencies = [
+    "typer>=0.12.0",
+    "rich>=13.0.0",
+    "questionary>=2.0.0",
+    "anthropic>=0.40.0",
+    "pyyaml>=6.0.0",
+]
+
+[project.scripts]
+agency-standards = "agency_standards.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agency_standards"]
+
+[tool.hatch.build]
+include = [
+    "src/agency_standards/**",
+    "src/agency_standards/builtin_standards/**",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.3.0",
+]
+
+[tool.ruff]
+line-length = 100
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "C90"]

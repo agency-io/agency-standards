@@ -1,0 +1,42 @@
+id: assertion-messages
+name: Assertion Failure Messages
+description: Every assert statement must include a human-readable failure message
+languages: [python]
+output_file: test_assertion_messages.py
+prompt: |
+  Generate a pytest architecture test that enforces that every `assert` statement in unit
+  and integration test files includes a failure message (the second argument to assert).
+
+  Python assert syntax: `assert <expression>, <message>`
+
+  The rule: every assert statement must have a message argument. The only exceptions are:
+  - `assert result is None` / `assert result is not None` — these are self-explanatory
+  - `assert result` (simple truthiness) — allowed if the variable name is descriptive enough
+
+  Use Python's ast module. Walk ast.Assert nodes. Check that node.msg is not None for
+  assert statements that use comparison operators (==, !=, <, >, in, not in, is, is not).
+
+  The test should:
+  - Collect all violations before failing
+  - Report: filename:line_number — test_function_name — assert without message
+  - Fail with a summary
+
+  Derive test directories from the project context above.
+claude_md_section: |
+  ## Assertion Failure Messages
+
+  Every assert that compares values must include a failure message:
+
+  ```python
+  # Bad
+  assert actual_count == expected_count
+
+  # Good
+  assert actual_count == expected_count, f"Expected {expected_count} items but got {actual_count}"
+  ```
+
+  For existence/boolean checks, include context:
+  ```python
+  assert actual_value is not None, "Expected value to be set but was None"
+  assert actual_flag, "Expected flag to be True after processing"
+  ```

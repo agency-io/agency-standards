@@ -1,0 +1,47 @@
+id: aaa-comments
+name: AAA Comments
+description: Every unit and integration test method must have explicit # Arrange, # Act, # Assert comments
+languages: [python]
+output_file: test_aaa_comments.py
+prompt: |
+  Generate a pytest architecture test that enforces the AAA (Arrange / Act / Assert) pattern.
+
+  The rule: every test method in the project's unit and integration test files must contain
+  at least # Arrange, # Act, and # Assert as inline comments. The # Act section must contain
+  exactly one statement (the thing being tested). Empty sections still need the comment.
+
+  Use Python's ast module to walk every test_*.py file in the unit and integration directories.
+  For each function whose name starts with "test_", parse the function body and verify that
+  the comment strings appear somewhere in the source lines of that function.
+
+  The test should:
+  - Collect ALL violations across all test files before failing
+  - Report each violation as: filename:line_number — test_function_name — missing: [list]
+  - Fail with a clear summary message listing all violations
+  - Be robust to nested classes (test classes containing test methods)
+
+  Use pathlib.Path for all file operations. Derive the test directories from the project root
+  using the actual structure observed in the project context above.
+claude_md_section: |
+  ## AAA Pattern (Arrange / Act / Assert)
+
+  Every unit and integration test method must have three explicit comment sections:
+
+  ```python
+  def test_something(self):
+      # Arrange
+      expected_value = "hello"
+
+      # Act
+      actual_value = do_something()
+
+      # Assert
+      assert actual_value == expected_value, f"Expected {expected_value!r} but got {actual_value!r}"
+  ```
+
+  Rules:
+  - `# Arrange`, `# Act`, `# Assert` comments are mandatory in every test method
+  - Empty sections still need the comment (write `pass` if truly nothing to arrange)
+  - `# Act` contains exactly one operation — the thing being tested
+  - `# Assert` contains only assertions, no additional logic
+  - The architecture test `tests/architecture/test_aaa_comments.py` enforces this automatically
