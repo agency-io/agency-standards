@@ -3,9 +3,26 @@ from pathlib import Path
 from rich.console import Console
 from rich.rule import Rule
 
+from ..models import Standard
 from ..standards.loader import load_catalog, load_project
 
 console = Console()
+
+PHASE_ATTRS = [
+    ("pre_init",    "pre-init"),
+    ("post_init",   "post-init"),
+    ("pre_propose", "pre-propose"),
+    ("post_propose","post-propose"),
+    ("pre_apply",   "pre-apply"),
+    ("post_apply",  "post-apply"),
+    ("pre_archive", "pre-archive"),
+    ("post_archive","post-archive"),
+]
+
+
+def _phases(standard: Standard) -> str:
+    active = [label for attr, label in PHASE_ATTRS if getattr(standard, attr) is not None]
+    return ", ".join(active) if active else "—"
 
 
 def run(filter_tag: str | None, verbose: bool, project_path: Path) -> None:
@@ -14,9 +31,7 @@ def run(filter_tag: str | None, verbose: bool, project_path: Path) -> None:
     adopted_ids = {s.id for s in project_standards}
     catalog_ids = {s.id for s in catalog}
 
-    # Custom = in project but not in catalog
     custom = [s for s in project_standards if s.id not in catalog_ids]
-
     all_standards = catalog + custom
 
     if filter_tag:
@@ -34,8 +49,11 @@ def run(filter_tag: str | None, verbose: bool, project_path: Path) -> None:
             marker = "[green]✓[/green] "
         else:
             marker = "  "
+
         tags_str = f"[dim][{', '.join(standard.tags)}][/dim]" if standard.tags else ""
+        phases_str = f"[dim]{_phases(standard)}[/dim]"
         console.print(f"{marker}[bold]{standard.id}[/bold]  {standard.name}  {tags_str}")
+        console.print(f"     [dim]phases:[/dim] {phases_str}")
 
         if verbose and standard.post_init and standard.post_init.claude_md_section:
             console.print(Rule(style="dim"))
