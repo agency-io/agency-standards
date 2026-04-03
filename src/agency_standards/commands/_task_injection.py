@@ -2,7 +2,6 @@
 import sys
 from pathlib import Path
 
-import anthropic
 from rich.console import Console
 
 from ..inspector import inspect
@@ -10,22 +9,16 @@ from ..models import Standard, TaskPhase
 from ..standards.loader import evaluate_condition, load_all
 
 console = Console()
-MODEL = "claude-sonnet-4-6"
 
 
 def run_task_injection(phase_name: str, phase_attr: str, change_id: str, target: Path) -> None:
-    """Inject tasks for `phase_name` into a change's tasks.md via Claude."""
+    """Inject tasks for `phase_name` into a change's tasks.md."""
     change_dir = target / "openspec" / "changes" / change_id
     if not change_dir.exists():
         console.print(f"[red]Change directory not found: {change_dir}[/red]")
         sys.exit(1)
 
-    proposal_path = change_dir / "proposal.md"
     tasks_path = change_dir / "tasks.md"
-
-    if not proposal_path.exists():
-        console.print(f"[red]proposal.md not found in {change_dir}[/red]")
-        sys.exit(1)
     if not tasks_path.exists():
         console.print(f"[red]tasks.md not found in {change_dir}[/red]")
         sys.exit(1)
@@ -49,13 +42,12 @@ def run_task_injection(phase_name: str, phase_attr: str, change_id: str, target:
         + "[/dim]"
     )
 
-    proposal_content = proposal_path.read_text()
-    tasks_content = tasks_path.read_text()
+    content = tasks_path.read_text()
+    for standard in applicable:
+        phase: TaskPhase = getattr(standard, phase_attr)
+        content = _inject(content, phase, standard.id)
 
-    prompt = _build_prompt(phase_name, proposal_content, tasks_content, applicable, phase_attr)
-    updated_tasks = _call_claude(prompt)
-
-    tasks_path.write_text(updated_tasks)
+    tasks_path.write_text(content)
     console.print(f"Updated [cyan]{tasks_path.relative_to(target)}[/cyan]")
     console.print(
         f"Standards that contributed {phase_name} tasks: "
@@ -63,44 +55,45 @@ def run_task_injection(phase_name: str, phase_attr: str, change_id: str, target:
     )
 
 
-def _build_prompt(
-    phase_name: str,
-    proposal_content: str,
-    tasks_content: str,
-    applicable: list[Standard],
-    phase_attr: str,
-) -> str:
-    standards_section = ""
-    for standard in applicable:
-        phase: TaskPhase = getattr(standard, phase_attr)
-        task_lines = "\n".join(f"  - {t}" for t in phase.tasks)
-        standards_section += (
-            f"\nStandard: {standard.id}\n"
-            f"Insert position: {phase.insert}\n"
-            f"Tasks to add:\n{task_lines}\n"
-        )
+def _inject(content: str, phase: TaskPhase, standard_id: str) -> str:
+    """Insert phase tasks into content at the declared position, skipping duplicates."""
+    new_lines = [f"- [ ] [{standard_id}] {t}" for t in phase.tasks]
+    new_lines = [line for line in new_lines if line not in content]
+    if not new_lines:
+        return content
 
-    return (
-        f"You are rewriting a tasks.md file for the {phase_name} phase of a software change.\n\n"
-        "## Proposal context\n"
-        f"{proposal_content}\n\n"
-        "## Current tasks.md\n"
-        f"{tasks_content}\n\n"
-        f"## {phase_name} tasks to inject from applicable standards\n"
-        f"{standards_section}\n"
-        "Rewrite tasks.md inserting each standard's tasks at the specified position.\n"
-        "Rules:\n"
-        "- Do not alter existing task wording or numbering\n"
-        "- Do not introduce duplicate tasks\n"
-        "- Return ONLY the updated tasks.md content, no explanation\n"
-    )
+    block = "\n".join(new_lines)
+    insert = phase.insert.strip()
+
+    if insert == "prepend":
+        return block + "\n" + content
+    if insert == "append":
+        return content.rstrip("\n") + "\n" + block + "\n"
+    if insert.startswith("before:"):
+        return _insert_before_section(content, block, insert[len("before:"):])
+    if insert.startswith("after:"):
+        return _insert_after_section(content, block, insert[len("after:"):])
+    return content.rstrip("\n") + "\n" + block + "\n"
 
 
-def _call_claude(prompt: str) -> str:
-    client = anthropic.Anthropic()
-    message = client.messages.create(
-        model=MODEL,
-        max_tokens=4096,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return message.content[0].text
+def _insert_before_section(content: str, block: str, section: str) -> str:
+    lines = content.splitlines(keepends=True)
+    for i, line in enumerate(lines):
+        if line.strip() == f"## {section}":
+            lines.insert(i, block + "\n")
+            return "".join(lines)
+    console.print(f"  [yellow]Section '{section}' not found; appending tasks[/yellow]")
+    return content.rstrip("\n") + "\n" + block + "\n"
+
+
+def _insert_after_section(content: str, block: str, section: str) -> str:
+    lines = content.splitlines(keepends=True)
+    for i, line in enumerate(lines):
+        if line.strip() == f"## {section}":
+            j = i + 1
+            while j < len(lines) and not lines[j].startswith("## "):
+                j += 1
+            lines.insert(j, block + "\n")
+            return "".join(lines)
+    console.print(f"  [yellow]Section '{section}' not found; appending tasks[/yellow]")
+    return content.rstrip("\n") + "\n" + block + "\n"

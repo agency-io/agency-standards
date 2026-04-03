@@ -191,7 +191,6 @@ post_propose:
 ## Requirements
 
 - Python 3.11+
-- An Anthropic API key (`ANTHROPIC_API_KEY` environment variable) — used by task-injection commands
 - [OpenSpec](https://github.com/agency-io/openspec) — the workflow this tool complements
 
 ## License
