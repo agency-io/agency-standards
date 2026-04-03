@@ -44,11 +44,47 @@ post_init:
   claude_md_section: |
     ## E2E Steps Use CLI or SDK, Not Direct HTTP
 
-    E2E step definitions must not import raw HTTP client libraries (httpx, requests, axios,
-    net/http, HttpClient, etc.). Instead:
-    - Use the CLI runner (e.g. `lws_invoke`, `assert_invoke`) for Given/When/Then steps
-    - Use the official SDK client via the TestClient helper
-    - Raw HTTP belongs in the TestClient (client.py), not in step files
+    Step definition files (in `given/`, `when/`, `then/`) must not import or use raw HTTP
+    client libraries. All system interaction goes through the CLI runner or the TestClient.
+
+    ### Why
+
+    Step files describe *what* the system should do, not *how* it communicates internally.
+    Importing `requests` or `httpx` directly in a step file couples the test to the transport
+    layer, bypasses the interface being tested, and duplicates logic that belongs in `client.py`.
+    It also makes tests harder to update when the transport changes.
+
+    ### Bad — raw HTTP in a step file
+
+    ```python
+    # given/a_table_exists.py — BAD
+    import httpx
+
+    @given("a table exists")
+    def a_table_exists(lws_session):
+        httpx.post("http://localhost:8080/tables", json={"name": "e2e-test"})
+    ```
+
+    ### Good — interaction through the TestClient
+
+    ```python
+    # given/a_table_exists.py — GOOD
+    @given("a table exists")
+    def a_table_exists(lws_session):
+        lws_session.dynamodb.create_table("e2e-create-table")
+    ```
+
+    ### Where raw HTTP is allowed
+
+    `client.py` (the TestClient class) is the **only** place raw HTTP clients may be used.
+    That class exists precisely to encapsulate transport details away from step files.
+
+    ### Libraries that trigger a violation
+
+    Python: `httpx`, `requests`, `urllib.request`, `aiohttp`
+    TypeScript: `axios`, `node-fetch`, `got`, raw `http`/`https` modules
+    Go: `net/http` in step files (not in client helpers)
+    Java: `HttpClient`, `OkHttpClient`, `RestTemplate` in step files
 
 post_propose:
   insert: before:Implementation

@@ -49,22 +49,54 @@ post_init:
   claude_md_section: |
     ## No Steps in Conftest
 
-    `conftest.py` is for fixtures and wildcard step imports only. Step functions must live
-    in given/, when/, then/ directories:
+    `conftest.py` has exactly two permitted uses: defining fixtures and importing step
+    packages with wildcard imports. Step functions must live in `given/`, `when/`, `then/`.
+
+    ### Why
+
+    `conftest.py` is a framework entry point, not a step definition file. Putting steps
+    there makes them invisible to the directory-based navigation convention and turns
+    `conftest.py` into a dumping ground. Any step in `conftest.py` is a step that cannot
+    be found by looking in the expected place.
+
+    ### What belongs in conftest.py
 
     ```python
-    # conftest.py — OK
+    # conftest.py — correct usage
+    import pytest
     from .given import *  # noqa: F401,F403
     from .when import *   # noqa: F401,F403
     from .then import *   # noqa: F401,F403
 
     @pytest.fixture
-    def lws_session(): ...
+    def lws_session():
+        ...
 
-    # conftest.py — NOT OK
-    @given("a table exists")          # belongs in given/a_table_exists.py
-    def a_table_exists(lws_session): ...
+    @pytest.fixture
+    def dynamodb_client(lws_session):
+        return DynamodbTestClient(lws_session)
     ```
+
+    ### What does not belong in conftest.py
+
+    ```python
+    # conftest.py — WRONG
+    from pytest_bdd import given, when, then
+
+    @given("a table exists")           # ← belongs in given/a_table_exists.py
+    def a_table_exists(lws_session):
+        lws_session.dynamodb.create_table("e2e-create-table")
+
+    @when("I delete the table")        # ← belongs in when/i_delete_the_table.py
+    def i_delete_the_table(lws_session):
+        ...
+    ```
+
+    ### Fix
+
+    Move the step function to the correct `given/`, `when/`, or `then/` file, following
+    the `step-file-name-matches-function` and `one-step-per-file` standards.
+    Update `__init__.py` in the destination directory to import the new file.
 
 post_propose:
   insert: before:Implementation

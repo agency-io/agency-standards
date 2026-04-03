@@ -45,12 +45,48 @@ post_init:
   claude_md_section: |
     ## Step Decorator Matches Directory
 
-    Step decorators must match the directory they are in:
-    - `given/` — only `@given` / `Given()` / `@Given`
-    - `when/` — only `@when` / `When()` / `@When`
-    - `then/` — only `@then` / `Then()` / `@Then`
+    Step decorators must match the directory they live in.
 
-    If you find yourself putting a @when in a given/ file, it belongs in when/.
+    | Directory | Permitted decorators |
+    |---|---|
+    | `given/` | `@given` / `Given()` / `@Given` |
+    | `when/` | `@when` / `When()` / `@When` |
+    | `then/` | `@then` / `Then()` / `@Then` |
+
+    ### Why
+
+    The `given/when/then/` directory structure is a navigational contract: if you know
+    a step starts with "Given", you know exactly which directory to look in. A `@when`
+    decorator in a `given/` file breaks that contract and forces developers to search.
+    It also signals that the step belongs somewhere else — move it.
+
+    ### Bad
+
+    ```python
+    # given/a_table_exists.py — BAD
+    @given("a table exists")
+    def a_table_exists(context): ...
+
+    @when("I delete the table")       # ← wrong directory
+    def i_delete_the_table(context): ...
+    ```
+
+    ### Good
+
+    ```python
+    # given/a_table_exists.py
+    @given("a table exists")
+    def a_table_exists(context): ...
+
+    # when/i_delete_the_table.py
+    @when("I delete the table")
+    def i_delete_the_table(context): ...
+    ```
+
+    ### What to do if you find a mismatch
+
+    Move the step function to the correct directory and update `__init__.py` in both
+    the source and destination directories.
 
 post_propose:
   insert: before:Implementation

@@ -37,11 +37,34 @@ post_init:
   claude_md_section: |
     ## File Length
 
-    Source files must not exceed 500 lines. A file that is growing beyond this is a signal
-    to split it into smaller, focused modules.
+    Source files must not exceed 500 lines (including blank lines and comments).
 
-    Count includes blank lines and comments. Generated files, vendored code, and
-    single-purpose re-export files are exempt.
+    ### Why
+
+    File length is a proxy for complexity. A 600-line file almost always contains more than
+    one cohesive responsibility. Keeping files short forces decisions about where things belong,
+    makes code reviews easier to scope, and reduces the chance that two unrelated changes
+    conflict in the same file.
+
+    ### How to split a long file
+
+    | Situation | Solution |
+    |---|---|
+    | Multiple public classes | One class per file (see one-class-per-file standard) |
+    | Large class with many methods | Extract cohesive groups of methods into collaborator classes |
+    | Many helper functions | Move to a focused `<concern>_helpers.py` or `utils/<concern>.py` |
+    | Long test file | Split by scenario — one operation or condition per file |
+
+    ### Exemptions
+
+    The following are not counted toward the limit:
+    - **Generated files** — migrations, protobuf output, auto-generated clients
+    - **Vendored code** — third-party code copied into the repo
+    - **Re-export files** — `__init__.py` or `index.ts` files whose sole purpose is to
+      re-export symbols from other modules
+    - **Type declaration files** — `.d.ts` files in TypeScript projects
+
+    If you are unsure whether a file qualifies, apply the limit.
 
 post_propose:
   insert: before:Implementation

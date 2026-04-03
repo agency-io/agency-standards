@@ -47,20 +47,55 @@ post_init:
   claude_md_section: |
     ## No Session Helpers in Constants
 
-    `constants.py` is for constants and pure helpers only. Functions that take a session
-    or client as their first parameter belong in `client.py` (inside the TestClient class):
+    `constants.py` holds constants and pure helper functions only. Any function that accepts
+    a session or client object as a parameter belongs in `client.py`, inside the TestClient class.
+
+    ### Why
+
+    `constants.py` and `client.py` have distinct responsibilities. Mixing session-dependent
+    helpers into `constants.py` breaks that contract — you end up with a file that does two
+    unrelated things, and developers cannot predict where to find session logic.
+
+    ### What belongs where
 
     ```python
-    # constants.py — OK
+    # constants.py — constants and pure helpers ONLY
     TEST_TABLE = "e2e-create-table"
+    TEST_QUEUE = "e2e-send-message"
 
-    def build_item(pk: str) -> dict:   # pure, no session — OK
-        return {"pk": pk}
+    def build_item(pk: str) -> dict:    # pure function, no session — OK here
+        return {"pk": pk, "sk": "ITEM"}
 
-    # constants.py — NOT OK
-    def create_table(lws_session, name=TEST_TABLE):  # session param → belongs in client.py
-        ...
+    def make_tag(key: str, value: str) -> dict:  # pure — OK here
+        return {"Key": key, "Value": value}
     ```
+
+    ```python
+    # constants.py — NOT OK
+    def create_table(lws_session, name=TEST_TABLE):  # session param → move to client.py
+        lws_session.dynamodb.create_table(name)
+
+    def wait_for_active(aws_client, table_name):     # client param → move to client.py
+        aws_client.get_waiter("table_exists").wait(TableName=table_name)
+    ```
+
+    ```python
+    # client.py — where session helpers belong
+    class DynamodbTestClient:
+        def __init__(self, lws_session):
+            self._session = lws_session
+
+        def create_table(self, name=TEST_TABLE):
+            self._session.dynamodb.create_table(name)
+
+        def wait_for_active(self, table_name):
+            ...
+    ```
+
+    ### Signal to look for
+
+    Any function in `constants.py` whose first parameter is named `session`, `client`,
+    `lws_session`, `boto_client`, or similar — move it to the TestClient class.
 
 post_propose:
   insert: before:Implementation

@@ -1,8 +1,10 @@
 import shutil
 from pathlib import Path
 
+import questionary
 from rich.console import Console
 
+from ..config import load_config, save_config
 from ..inspector import inspect
 from ..standards.loader import evaluate_condition, load_all
 
@@ -12,7 +14,7 @@ SKILLS_DEST_SUBDIR = ".claude/commands/agency-standards"
 console = Console()
 
 
-def run(target: Path) -> None:
+def run(target: Path, yes: bool = False) -> None:
     ctx = inspect(target)
     console.print(f"[dim]Inspected project: {target}[/dim]")
     console.print(f"[dim]Languages: {', '.join(ctx.languages) or 'unknown'}[/dim]")
@@ -24,16 +26,48 @@ def run(target: Path) -> None:
 
     if not applicable:
         console.print("[yellow]No applicable standards found for this project.[/yellow]")
-    else:
-        console.print(f"[dim]{len(applicable)} standards applicable[/dim]")
+        return
 
-    _write_claude_md(target, applicable)
+    selected = _select_standards(applicable, target, yes)
+
+    if not selected:
+        console.print("[yellow]No standards selected; CLAUDE.md not updated.[/yellow]")
+        save_config(target, [])
+        return
+
+    _write_claude_md(target, selected)
     _install_skills(target)
+    save_config(target, [s.id for s in selected])
+    console.print(f"Saved [cyan].agency-standards.yaml[/cyan] ({len(selected)} standards enabled)")
 
     console.print(
         "\nRun [cyan]/agency-standards:generate[/cyan] in Claude Code to generate"
         " architecture tests"
     )
+
+
+def _select_standards(applicable: list, target: Path, yes: bool) -> list:
+    if yes:
+        console.print(f"[dim]--yes flag: applying all {len(applicable)} applicable standards[/dim]")
+        return applicable
+
+    enabled_ids = set(load_config(target))
+
+    choices = [
+        questionary.Choice(
+            title=f"{s.id}  [{', '.join(s.tags)}]  — {s.description}",
+            value=s,
+            checked=(s.id in enabled_ids) if enabled_ids else True,
+        )
+        for s in applicable
+    ]
+
+    selected = questionary.checkbox(
+        f"Select standards to enable ({len(applicable)} applicable):",
+        choices=choices,
+    ).ask()
+
+    return selected if selected is not None else []
 
 
 def _write_claude_md(target: Path, applicable: list) -> None:

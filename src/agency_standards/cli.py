@@ -12,16 +12,33 @@ app = typer.Typer(
 console = Console()
 
 
+@app.command("list")
+def list_standards(
+    filter_tag: str | None = typer.Option(
+        None, "--filter", "-f", help="Filter by tag (e.g. bdd, general, e2e)."
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show full documentation."),
+    target: Path = typer.Argument(
+        default=Path("."),
+        help="Project directory (used to show enabled status). Defaults to current directory.",
+    ),
+) -> None:
+    """List available standards with their documentation."""
+    from .commands.list_cmd import run
+    run(filter_tag, verbose, target.resolve())
+
+
 @app.command("post-init")
 def post_init(
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip interactive selection."),
     target: Path = typer.Argument(
         default=Path("."),
         help="Project directory. Defaults to current directory.",
     ),
 ) -> None:
-    """Inspect project, write CLAUDE.md, install skills."""
+    """Inspect project, select standards, write CLAUDE.md, install skills."""
     from .commands.post_init_cmd import run
-    run(target.resolve())
+    run(target.resolve(), yes=yes)
 
 
 @app.command("post-propose")
@@ -66,23 +83,7 @@ def post_archive(
 
 
 @app.callback(invoke_without_command=True)
-def default_callback(
-    ctx: typer.Context,
-    change_id: str | None = typer.Argument(
-        default=None,
-        help="Change ID — shorthand for `agency-standards post-propose <change-id>`.",
-    ),
-    target: Path = typer.Option(
-        Path("."),
-        "--target", "-t",
-        help="Project directory. Defaults to current directory.",
-    ),
-) -> None:
-    """If a change-id is given with no subcommand, run post-propose."""
-    if ctx.invoked_subcommand is not None:
-        return
-    if change_id is not None:
-        from .commands.post_propose_cmd import run
-        run(change_id, target.resolve())
-    else:
+def default_callback(ctx: typer.Context) -> None:
+    """OpenSpec lifecycle companion for architecture governance."""
+    if ctx.invoked_subcommand is None:
         console.print(ctx.get_help())

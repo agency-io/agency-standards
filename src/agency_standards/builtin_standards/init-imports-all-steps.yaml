@@ -43,17 +43,49 @@ post_init:
   claude_md_section: |
     ## Init Imports All Steps
 
-    Each given/, when/, then/ directory needs an `__init__.py` (or `index.ts`) that
-    re-exports every step file:
+    Every `given/`, `when/`, `then/` directory must have an `__init__.py` (Python) or
+    `index.ts` (TypeScript) that imports every step file in that directory.
+
+    ### Why
+
+    The BDD framework discovers steps through a wildcard import in `conftest.py`:
+
+    ```python
+    # conftest.py
+    from .given import *
+    from .when import *
+    from .then import *
+    ```
+
+    For `from .given import *` to work, `given/__init__.py` must explicitly import every
+    step file. If a new step file is added but not listed in `__init__.py`, pytest-bdd
+    will silently skip it — the scenario will appear to pass even though the step was
+    never executed.
+
+    ### Required format (Python)
 
     ```python
     # given/__init__.py
-    from .a_table_exists import *  # noqa: F401,F403
-    from .a_queue_exists import *  # noqa: F401,F403
+    from .a_table_exists import *   # noqa: F401,F403
+    from .a_table_is_active import *  # noqa: F401,F403
+    from .a_queue_exists import *   # noqa: F401,F403
     ```
 
-    This is how the BDD framework discovers steps through the conftest wildcard import.
-    If you add a new step file and forget to add it here, pytest-bdd will silently skip it.
+    Every `.py` file in the directory (except `__init__.py` itself) must appear here.
+
+    ### Required format (TypeScript)
+
+    ```typescript
+    // given/index.ts
+    export * from './a_table_exists'
+    export * from './a_table_is_active'
+    ```
+
+    ### When you add a new step file
+
+    1. Create the step file in the appropriate directory
+    2. Add the import to `__init__.py` / `index.ts` in that directory
+    3. The architecture test will fail if you forget step 2
 
 post_propose:
   insert: before:Implementation

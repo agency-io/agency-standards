@@ -46,18 +46,39 @@ post_init:
   claude_md_section: |
     ## One Step Per File
 
-    Each file in given/, when/, then/ directories must define exactly one step function.
-    The file name should describe the step it contains.
+    Each file in `given/`, `when/`, `then/` directories must define exactly one step function.
+
+    ### Why
+
+    One step per file, combined with `step-file-name-matches-function`, makes every step
+    findable in O(1): you know immediately which file to open. A file with multiple steps
+    forces a search, has a generic name that violates the naming convention, and makes it
+    harder to update or reuse individual steps.
+
+    ### Good
 
     ```
-    # Good
-    given/a_table_exists.py          → def a_table_exists(...)
-    when/i_delete_the_table.py       → def i_delete_the_table(...)
-    then/the_table_will_not_exist.py → def the_table_will_not_exist(...)
-
-    # Bad — multiple steps in one file
-    given/table_steps.py  → def a_table_exists(...) + def a_table_is_active(...)
+    given/a_table_exists.py          → @given("a table exists") def a_table_exists(...)
+    given/a_table_is_active.py       → @given("a table is active") def a_table_is_active(...)
+    when/i_delete_the_table.py       → @when("I delete the table") def i_delete_the_table(...)
+    then/the_table_does_not_exist.py → @then("the table does not exist") def the_table_does_not_exist(...)
     ```
+
+    ### Bad
+
+    ```
+    given/table_steps.py  → def a_table_exists(...)
+                            def a_table_is_active(...)   ← two steps, wrong
+    ```
+
+    ### Acceptable contents alongside the step function
+
+    - Imports
+    - Small private helper functions used only by that step (prefix with `_`)
+    - The step function's pytest fixture parameters
+
+    If a helper is used by more than one step, it belongs in `constants.py` (if pure)
+    or `client.py` (if it uses a session).
 
 post_propose:
   insert: before:Implementation

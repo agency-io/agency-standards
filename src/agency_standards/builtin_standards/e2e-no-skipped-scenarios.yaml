@@ -39,12 +39,55 @@ post_init:
   claude_md_section: |
     ## No Skipped Gherkin Scenarios
 
-    Feature files must not contain @skip, @wip, @xfail, or @pending tags. Skipped scenarios
-    are unverified specification — they erode trust in the suite.
+    Feature files must not contain `@skip`, `@wip`, `@xfail`, or `@pending` tags.
 
-    The only permitted exclusion tag is @internal, reserved for scenarios that require
-    system state that no sequence of public API calls can produce (e.g. a resource already
-    in a DELETING transient state).
+    ### Why
+
+    A feature file is the specification of the system's intended behaviour. A skipped scenario
+    is an unverified claim — it says "the system should do X" while simultaneously telling the
+    test runner not to check. Over time, skipped scenarios accumulate and the gap between the
+    specification and the verified behaviour widens silently. Teams lose confidence in what is
+    actually tested.
+
+    The discipline is: if the scenario cannot run today, do not commit it until it can.
+
+    ### Forbidden tags
+
+    ```gherkin
+    @skip
+    @wip
+    @xfail
+    @pending
+    ```
+
+    Any tag whose effect is to cause the scenario runner to skip or suppress the scenario
+    is forbidden.
+
+    ### The only permitted exclusion: @internal
+
+    `@internal` is reserved for scenarios that require system state unreachable via the
+    public API — for example, a resource already in a transient `DELETING` state that cannot
+    be reproduced by any sequence of public API calls.
+
+    ```gherkin
+    @internal
+    Scenario: deletion fails when resource is already deleting
+      Given a table is in a DELETING state
+      When I delete the table
+      Then I receive a ResourceInUse error
+    ```
+
+    `@internal` scenarios are still executed — they require a specialised fixture to
+    manufacture the state. They are not a mechanism to skip a scenario indefinitely.
+
+    ### What to do instead of skipping
+
+    | Situation | Resolution |
+    |---|---|
+    | Scenario not yet implemented | Do not commit it until implemented |
+    | Flaky scenario | Fix the flakiness or remove the scenario |
+    | Hard-to-set-up infrastructure | Solve the infrastructure problem |
+    | Genuinely unreachable state | Use `@internal` with a manufacturing fixture |
 
 post_propose:
   insert: before:Implementation

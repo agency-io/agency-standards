@@ -50,18 +50,59 @@ post_init:
   claude_md_section: |
     ## Assertion Failure Messages
 
-    Every comparison assertion must include a failure message:
+    Every comparison assertion must include a human-readable failure message.
 
+    ### Why
+
+    Without a message, a failing assertion prints only the raw values — or nothing at all.
+    A developer reading CI output has to open the test file, find the assertion, and work out
+    what was expected and why. A good message makes the failure self-explanatory.
+
+    ### By language
+
+    **Python**
     ```python
-    # Python — bad
+    # Bad
     assert actual_count == expected_count
 
-    # Python — good
-    assert actual_count == expected_count, f"Expected {expected_count} but got {actual_count}"
+    # Good
+    assert actual_count == expected_count, (
+        f"Expected {expected_count} items but got {actual_count}"
+    )
     ```
 
-    This applies across languages: msg= in unittest, the message argument in JUnit, the
-    description string in testify, etc.
+    **Python unittest**
+    ```python
+    # Bad
+    self.assertEqual(actual, expected)
+
+    # Good
+    self.assertEqual(actual, expected, msg=f"Expected {expected!r} but got {actual!r}")
+    ```
+
+    **Go (testify)**
+    ```go
+    // Bad
+    assert.Equal(t, want, got)
+
+    // Good
+    assert.Equal(t, want, got, "account status after creation")
+    ```
+
+    **Java JUnit 5**
+    ```java
+    // Bad
+    assertEquals(expected, actual);
+
+    // Good
+    assertEquals(expected, actual, "account count after deletion");
+    ```
+
+    ### Exceptions — messages not required
+
+    - `assert value is not None` / null checks
+    - Simple boolean truthiness checks (`assert response.ok`)
+    - BDD step files (the Gherkin scenario text serves as the description)
 
 post_propose:
   insert: before:Implementation

@@ -47,19 +47,44 @@ post_init:
   claude_md_section: |
     ## No Magic Strings in Assertions
 
-    Extract comparison values to named variables before asserting:
+    Extract comparison values to named variables before asserting. Never inline a raw
+    string or number literal directly in an assertion.
+
+    ### Why
+
+    A magic string in an assertion tells you nothing about intent. `== "active"` is opaque;
+    `== expected_status` tells you what the value represents. When the test fails, a named
+    variable also produces a clearer error message because you can include both names.
+
+    ### Pattern
 
     ```python
-    # Bad
+    # Bad — intent unclear, failure message useless
     assert account["status"] == "active"
 
-    # Good
+    # Good — intent clear, failure message informative
     expected_status = "active"
     actual_status = account["status"]
-    assert actual_status == expected_status, f"Expected {expected_status!r} but got {actual_status!r}"
+    assert actual_status == expected_status, (
+        f"Expected status {expected_status!r} but got {actual_status!r}"
+    )
     ```
 
-    The same rule applies in Go (want/got), TypeScript (expected/actual), and Java (expected/actual).
+    ### By language
+
+    | Language | Expected variable | Actual variable |
+    |---|---|---|
+    | Python | `expected_*` | `actual_*` |
+    | Go | `want` / `expected` | `got` |
+    | TypeScript | `expected` | `actual` / `result` |
+    | Java | `expected` | `actual` |
+
+    ### Exceptions — literals are permitted
+
+    - **Null/nil/None checks**: `assert result is None`
+    - **Boolean checks**: `assert response.ok`
+    - **Count checks where the value is self-evident**: `assert len(items) == 0`
+    - **Key/field presence checks**: `assert "id" in response`
 
 post_propose:
   insert: before:Implementation

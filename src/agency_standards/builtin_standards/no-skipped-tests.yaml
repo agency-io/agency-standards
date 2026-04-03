@@ -46,15 +46,38 @@ post_init:
   claude_md_section: |
     ## No Skipped Tests
 
-    Tests must never be skipped. Do not use:
-    - Python: `@pytest.mark.skip`, `@pytest.mark.xfail`, `pytest.skip()`
-    - TypeScript: `xit`, `xdescribe`, `test.skip`, `it.skip`
-    - Java: `@Disabled`, `@Ignore`
-    - Go: `t.Skip`, `godog.ErrSkip`
+    Tests must never be skipped using skip markers or decorators.
 
-    If a test requires infrastructure that is hard to set up, solve the infrastructure
-    problem. If a scenario requires internal system state unreachable via the public API,
-    use the `@internal` tag in the feature file — that is the only permitted exclusion.
+    ### Why
+
+    Skipped tests are invisible failures. They were written because someone believed the
+    behaviour mattered enough to specify, and then quietly switched off. Skipped tests
+    accumulate over time, are rarely re-enabled, and give false confidence in coverage.
+    The discipline: a test either runs and passes, or it does not exist.
+
+    ### Forbidden markers
+
+    | Language | Forbidden |
+    |---|---|
+    | Python | `@pytest.mark.skip`, `@pytest.mark.skipif`, `@pytest.mark.xfail`, `pytest.skip()` |
+    | TypeScript | `xit`, `xdescribe`, `test.skip`, `it.skip`, `describe.skip` |
+    | Java | `@Disabled`, `@Ignore` |
+    | Go | `t.Skip()` |
+
+    ### What to do instead
+
+    | Situation | Resolution |
+    |---|---|
+    | Infrastructure is hard to set up | Fix the infrastructure |
+    | Test is flaky | Find and fix the root cause |
+    | Feature not yet built | Delete the test; re-add it when the feature is implemented |
+    | Behaviour is environment-specific | Make the test environment-agnostic or use fixtures |
+
+    ### BDD / Gherkin
+
+    For Gherkin feature files, `@skip` and `@wip` tags are covered by the
+    `e2e-no-skipped-scenarios` standard. The `@internal` tag is the only permitted
+    Gherkin exclusion.
 
 post_propose:
   insert: before:Implementation

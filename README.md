@@ -25,8 +25,14 @@ openspec archive   →  agency-standards post-archive <change-id>
 ## Quick Start
 
 ```bash
-# After openspec init — write CLAUDE.md and install Claude Code skills
-agency-standards post-init
+# Browse all available standards
+agency-standards list
+agency-standards list --filter bdd      # filter by tag
+agency-standards list --verbose         # show full documentation
+
+# After openspec init — interactively select standards, write CLAUDE.md, install skills
+agency-standards post-init              # interactive checkbox selection
+agency-standards post-init --yes        # accept all applicable standards (CI-friendly)
 
 # Then open the project in Claude Code and run the generate skill:
 # /agency-standards:generate
@@ -42,13 +48,27 @@ agency-standards my-change-id
 
 | Command | Description |
 |---|---|
-| `post-init [TARGET]` | Write `CLAUDE.md`, install Claude Code skills. Run after `openspec init`. |
+| `list [--filter TAG] [--verbose]` | List all available standards. Pass `--filter bdd` to narrow by tag; `--verbose` to show full docs. |
+| `post-init [--yes] [TARGET]` | Interactively select standards, write `CLAUDE.md`, install skills. `--yes` skips the prompt. Run after `openspec init`. |
 | `post-propose <CHANGE-ID> [TARGET]` | Inject standard tasks into the change's `tasks.md` via Claude. Run after `openspec propose`. |
 | `post-apply <CHANGE-ID> [TARGET]` | *(Not yet implemented)* Run after `openspec apply`. |
 | `post-archive <CHANGE-ID> [TARGET]` | *(Not yet implemented)* Run after `openspec archive`. |
 
-`post-propose` is the default — `agency-standards <change-id>` is equivalent to
-`agency-standards post-propose <change-id>`.
+### `.agency-standards.yaml`
+
+`post-init` persists the selected standards to `.agency-standards.yaml` at the project root:
+
+```yaml
+standards:
+  enabled:
+    - aaa-comments
+    - file-naming
+    - one-step-per-file
+```
+
+Commit this file — it records which standards your team has adopted. On subsequent `post-init`
+runs, previously-selected standards are pre-checked and new ones are unchecked (so new standards
+are opt-in).
 
 ## What `post-propose` does
 

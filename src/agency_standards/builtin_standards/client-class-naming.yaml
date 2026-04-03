@@ -43,16 +43,39 @@ post_init:
   claude_md_section: |
     ## TestClient Class Naming
 
-    Each `client.py` in a step package defines exactly one class named after the service:
+    Each `client.py` in a step package must define exactly one class named after the service
+    it wraps, following the pattern `<PascalCaseService>TestClient`.
+
+    ### Naming pattern
+
+    The directory name (snake_case) is converted to PascalCase and `TestClient` is appended:
 
     ```
     e2e/dynamodb/client.py       → class DynamodbTestClient
     e2e/ssm/client.py            → class SsmTestClient
     e2e/event_bridge/client.py   → class EventBridgeTestClient
+    e2e/secrets_manager/client.py → class SecretsManagerTestClient
     ```
 
-    The class encapsulates all session/SDK helpers for that service. Step files call
-    methods on this class rather than making SDK calls directly.
+    ### Why
+
+    A consistent naming convention makes it immediately clear which class to import in a step
+    file and what service it wraps. It also enforces the boundary between step logic (what the
+    test does) and transport logic (how it communicates with the service), since all SDK
+    interaction is concentrated in one named, predictable class.
+
+    ### What belongs in the TestClient
+
+    - Session/SDK client initialisation
+    - All calls to the service under test (create, read, update, delete operations)
+    - Retry logic, waiter calls, and response parsing specific to that service
+    - Helper methods that accept session/client as a parameter (see `no-session-helpers-in-constants`)
+
+    ### What does not belong in the TestClient
+
+    - Step logic (assertions, scenario state)
+    - Constants (use `constants.py`)
+    - Cross-service orchestration (use a higher-level fixture or conftest)
 
 post_propose:
   insert: before:Implementation

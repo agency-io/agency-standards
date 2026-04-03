@@ -50,20 +50,41 @@ post_init:
   claude_md_section: |
     ## Test File Naming
 
-    Test file names should describe both what is tested and under what condition:
+    Test file names must describe both **what** is being tested and **under what condition**.
+    A name that mirrors the source module (`test_models.py`) tells you nothing about what
+    scenario or operation is covered.
+
+    ### Why
+
+    A well-named test file is findable without opening it. When a test fails in CI, the file
+    name in the output should immediately tell you which operation broke and in what context.
+    Generic names force developers to search.
+
+    ### Pattern
 
     ```
-    # Good (Python)
-    test_account_repository_create.py
-    test_manifest_serialiser_when_empty.py
-
-    # Avoid — too generic
-    test_models.py
-    test_utils.py
+    test_<subject>_<operation>.py
+    test_<subject>_when_<condition>.py
+    test_<subject>_<operation>_when_<condition>.py
     ```
 
-    The same principle applies in Go, TypeScript, and Java — the name should be specific,
-    not just a mirror of the source module.
+    ### Examples
+
+    | Bad (too generic) | Good (specific) |
+    |---|---|
+    | `test_models.py` | `test_account_repository_create.py` |
+    | `test_utils.py` | `test_date_formatter_when_timezone_missing.py` |
+    | `test_handlers.py` | `test_order_handler_when_payment_fails.py` |
+    | `ModelsTest.java` | `AccountRepositoryCreateTest.java` |
+    | `utils.test.ts` | `date-formatter-empty-timezone.test.ts` |
+
+    ### Exemptions
+
+    These support files are excluded from the naming check:
+    - `conftest.py`, `__init__.py` — test infrastructure
+    - `constants.py`, `client.py` — BDD step helpers
+    - `fixtures.py`, `factories.py` — test data builders
+    - Step definition files in `given/`, `when/`, `then/` directories
 
 post_propose:
   insert: before:Implementation

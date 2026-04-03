@@ -49,10 +49,58 @@ post_init:
   claude_md_section: |
     ## One Class Per File
 
-    Each source file should define at most one public class. Private/inner helper classes
-    are acceptable when they are tightly coupled to the main class and not used elsewhere.
+    Each source file should define at most one public class.
 
-    Split files that contain multiple independent public classes into separate files.
+    ### Why
+
+    A file with multiple public classes is doing more than one thing. It makes the codebase
+    harder to navigate (you cannot predict which file a class lives in), harder to test in
+    isolation, and harder to change (a change to one class may unintentionally affect others
+    in the same file). The rule is a forcing function for single-responsibility modules.
+
+    ### What counts as a violation
+
+    ```python
+    # Bad — two independent public classes in one file
+    class OrderRepository:
+        ...
+
+    class PaymentRepository:
+        ...
+    ```
+
+    ```python
+    # Good — each class gets its own file
+    # order_repository.py
+    class OrderRepository:
+        ...
+
+    # payment_repository.py
+    class PaymentRepository:
+        ...
+    ```
+
+    ### Acceptable exceptions
+
+    - **Private/inner helper classes** tightly coupled to the main class and not used elsewhere:
+      ```python
+      class OrderRepository:
+          class _CacheKey:   # private, only used inside OrderRepository
+              ...
+      ```
+    - **Exception classes** defined alongside the class that raises them:
+      ```python
+      class OrderNotFoundError(Exception): ...
+
+      class OrderRepository:
+          def get(self, id): raise OrderNotFoundError(id)
+      ```
+    - **Dataclasses or value objects** that exist solely as the return type of the main class
+    - **Enums** — a file of enum values is not the same as a file with multiple classes
+
+    ### Applies to
+
+    Source files only. Test files are not checked by this standard.
 
 post_propose:
   insert: before:Implementation

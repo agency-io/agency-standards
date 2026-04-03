@@ -46,21 +46,51 @@ post_init:
   claude_md_section: |
     ## One Test Class Per File
 
-    Each unit test file should contain at most one test class. If a file grows to cover
-    multiple operations or scenarios, split it:
+    Each unit test file should contain at most one test class.
 
+    ### Why
+
+    A test file with multiple test classes is covering multiple concerns. This makes the file
+    name too generic (it cannot describe all the classes it contains), makes it harder to find
+    the test for a specific operation, and makes individual test classes harder to run in
+    isolation. One class per file enforces a natural scope boundary.
+
+    This standard pairs directly with `file-naming` — if a file needs two test classes, it
+    is almost always a sign the file name is also too generic.
+
+    ### Bad — multiple test classes in one file
+
+    ```python
+    # test_account_repository.py — BAD
+    class TestCreate:
+        def test_creates_account(self): ...
+
+    class TestUpdate:
+        def test_updates_status(self): ...
+
+    class TestDelete:
+        def test_deletes_account(self): ...
     ```
-    # Instead of one large file:
-    test_account_repository.py  (contains TestCreate, TestUpdate, TestDelete)
 
-    # Prefer focused files:
-    test_account_repository_create.py   (contains TestCreate)
-    test_account_repository_update.py   (contains TestUpdate)
-    test_account_repository_delete.py   (contains TestDelete)
+    ### Good — one class per file
+
+    ```python
+    # test_account_repository_create.py
+    class TestCreate:
+        def test_creates_account(self): ...
+
+    # test_account_repository_update.py
+    class TestUpdate:
+        def test_updates_status(self): ...
+
+    # test_account_repository_delete.py
+    class TestDelete:
+        def test_deletes_account(self): ...
     ```
 
-    This pairs with the file naming standard — if a file needs two test classes,
-    it is a signal the file name is also too generic.
+    ### Applies to
+
+    Unit test files only. BDD step files and integration test support files are excluded.
 
 post_propose:
   insert: before:Implementation

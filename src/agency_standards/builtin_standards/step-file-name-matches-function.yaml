@@ -42,18 +42,42 @@ post_init:
   claude_md_section: |
     ## Step File Name Matches Function
 
-    The name of a step file must match the function it defines:
+    The step file name must match the decorated function it defines.
+
+    ### Why
+
+    Combined with `one-step-per-file`, this creates a fully predictable file system:
+    given the step text you know the function name, and given the function name you know
+    the file name. No searching required. This is the O(1) step lookup property.
+
+    ### Examples
 
     ```
-    # Good
-    given/a_table_exists.py       → def a_table_exists(...)
-    when/i_delete_the_table.py    → def i_delete_the_table(...)
-
-    # Bad
-    given/setup.py                → def a_table_exists(...)  ← name mismatch
+    # Good — file name matches function name exactly
+    given/a_table_exists.py       → def a_table_exists(context)
+    when/i_delete_the_table.py    → def i_delete_the_table(context)
+    then/the_table_does_not_exist.py → def the_table_does_not_exist(context)
     ```
 
-    This makes any step findable in O(1) — you always know which file to look in.
+    ```
+    # Bad — name mismatch
+    given/setup.py                → def a_table_exists(context)   ← wrong file name
+    when/table_operations.py      → def i_delete_the_table(context)  ← too generic
+    ```
+
+    ### Matching rules
+
+    - The file stem (name without extension) must match the function name
+    - Matching is case-insensitive
+    - Leading/trailing underscores are ignored
+    - A `_given`, `_when`, or `_then` suffix on the file name is allowed for disambiguation
+
+    ### How to name a new step file
+
+    1. Write the step function: `def a_queue_is_empty(context): ...`
+    2. Name the file identically: `a_queue_is_empty.py`
+    3. Place it in the matching directory: `given/a_queue_is_empty.py`
+    4. Add it to `given/__init__.py`
 
 post_propose:
   insert: before:Implementation

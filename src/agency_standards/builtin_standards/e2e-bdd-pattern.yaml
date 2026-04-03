@@ -41,12 +41,57 @@ post_init:
   claude_md_section: |
     ## E2E Tests Use BDD Pattern
 
-    E2E tests must use Gherkin BDD (Given/When/Then), not class-based test structures:
-    - Every E2E test runner file must wire in feature scenarios (e.g. `scenarios()` in pytest-bdd)
-    - E2E files must not define Test* classes
-    - Step definitions live in given/, when/, then/ directories
+    E2E tests use Gherkin (Given/When/Then). Unit and integration tests use AAA
+    (Arrange/Act/Assert). These patterns are not interchangeable.
 
-    Unit tests use AAA. E2E tests use BDD. These are not interchangeable.
+    ### Why
+
+    BDD scenarios serve as executable specification — they describe behaviour in
+    business-readable language, independent of implementation. Class-based test structures
+    (`class TestCreateTable`) describe implementation details and are suited for unit tests.
+    Mixing the two in the E2E layer produces tests that are neither readable as specification
+    nor useful as unit tests.
+
+    ### Required structure for E2E runners (pytest-bdd)
+
+    ```python
+    # e2e/dynamodb/test_scenarios.py — GOOD
+    from pytest_bdd import scenarios
+
+    scenarios("../features/dynamodb.feature")
+    ```
+
+    ```python
+    # e2e/dynamodb/test_scenarios.py — BAD (class-based in E2E)
+    class TestDynamoDBCreate:
+        def test_create_table(self, session):
+            ...
+    ```
+
+    ### Step definitions
+
+    Steps live in `given/`, `when/`, `then/` directories, one step per file:
+
+    ```
+    e2e/dynamodb/
+    ├── features/
+    │   └── dynamodb.feature
+    ├── given/
+    │   └── a_table_exists.py
+    ├── when/
+    │   └── i_delete_the_table.py
+    ├── then/
+    │   └── the_table_does_not_exist.py
+    ├── client.py
+    └── test_scenarios.py
+    ```
+
+    ### Summary
+
+    | Layer | Pattern | Structure |
+    |---|---|---|
+    | Unit / integration tests | AAA | `class TestFoo` with `def test_*` methods |
+    | E2E tests | BDD | `.feature` files + `scenarios()` runner + step dirs |
 
 post_propose:
   insert: before:Implementation

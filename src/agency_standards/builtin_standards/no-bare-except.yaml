@@ -43,23 +43,74 @@ post_init:
   claude_md_section: |
     ## No Bare / Catch-All Error Handling
 
-    Always name the specific exception or error type you are handling:
+    Always name the specific exception or error type you are handling. Never use a bare
+    `except:` or an empty catch block.
+
+    ### Why
+
+    A bare `except` catches everything, including `KeyboardInterrupt`, `SystemExit`, and
+    programming errors like `AttributeError`. This hides bugs, makes debugging harder, and
+    can leave the program in an inconsistent state. Naming the exception type makes the
+    intent explicit and limits the handler to the errors it was designed for.
+
+    ### Python
 
     ```python
-    # Python — bad
+    # Bad — catches everything including programming errors
     try:
         do_something()
     except:
         pass
 
-    # Python — good
+    # Bad — too broad
+    try:
+        do_something()
+    except Exception:
+        pass
+
+    # Good — specific type
     try:
         do_something()
     except ValueError as e:
         handle(e)
+
+    # Good — multiple specific types
+    try:
+        do_something()
+    except (KeyError, TypeError) as e:
+        log.warning("unexpected input: %s", e)
+        raise
     ```
 
-    Empty catch blocks that silently swallow errors are also forbidden.
+    ### TypeScript
+
+    ```typescript
+    // Bad — error is swallowed
+    try {
+        doSomething()
+    } catch {}
+
+    // Bad — error is ignored
+    try {
+        doSomething()
+    } catch (e) {
+        // nothing
+    }
+
+    // Good — error is handled or re-raised
+    try {
+        doSomething()
+    } catch (e) {
+        if (e instanceof ValidationError) handle(e)
+        else throw e
+    }
+    ```
+
+    ### Acceptable patterns
+
+    - Re-raising after logging: `except Exception as e: log.error(...); raise`
+    - Top-level application error boundaries where catching broadly is intentional — document with a comment
+    - Go: not applicable (Go uses explicit error return values, not exceptions)
 
 post_propose:
   insert: before:Implementation
