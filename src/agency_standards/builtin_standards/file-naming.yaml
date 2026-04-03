@@ -1,62 +1,74 @@
 id: file-naming
 name: Test File Naming
 description: Test files must follow a consistent naming pattern describing what is tested and under what condition
-languages: [python, go, typescript, java]
 tags: [general]
-output_file: test_file_naming
-prompt: |
-  Generate an architecture test that enforces test file naming conventions.
 
-  The goal: test file names should describe both WHAT is being tested and UNDER WHAT CONDITION,
-  not just mirror the source module name.
+condition:
+  languages: [python, go, typescript, java]
 
-  Before generating, examine the project context to determine:
-  - The primary language
-  - The test framework and its required naming conventions:
-    - Python: test_*.py or *_test.py
-    - Go: *_test.go (required by the toolchain — naming within that is the concern)
-    - TypeScript: *.test.ts, *.spec.ts
-    - Java: *Test.java, *Spec.java
-  - The actual naming pattern used in existing test files — infer from sample files
-  - The test directories
-  - Support files that should be excluded from the check (conftest.py, __init__.py,
-    constants.py, client.py, helpers files, step definition files, fixtures, etc.)
+post_init:
+  output_file: test_file_naming
+  prompt: |
+    Generate an architecture test that enforces test file naming conventions.
 
-  Flag files where the name is too generic — where the name describes a whole module rather
-  than a specific area or operation. Generic names to flag (adapted to the language's convention):
-  - test_models, test_utils, test_helpers, test_main, test_core, models_test, utils_test
-  - ModelsTest.java, UtilsTest.java
-  - models.test.ts, utils.test.ts
+    The goal: test file names should describe both WHAT is being tested and UNDER WHAT CONDITION,
+    not just mirror the source module name.
 
-  Do NOT flag:
-  - Support/fixture/configuration files
-  - Files that follow the project's pattern with a clear subject and scenario
-  - Files that have a single focused subject even without an explicit scenario suffix
+    Before generating, examine the project context to determine:
+    - The primary language
+    - The test framework and its required naming conventions:
+      - Python: test_*.py or *_test.py
+      - Go: *_test.go (required by the toolchain — naming within that is the concern)
+      - TypeScript: *.test.ts, *.spec.ts
+      - Java: *Test.java, *Spec.java
+    - The actual naming pattern used in existing test files — infer from sample files
+    - The test directories
+    - Support files that should be excluded from the check (conftest.py, __init__.py,
+      constants.py, client.py, helpers files, step definition files, fixtures, etc.)
 
-  Generate the architecture test in the same language as the project.
-  Use file system traversal appropriate for that language.
+    Flag files where the name is too generic — where the name describes a whole module rather
+    than a specific area or operation. Generic names to flag (adapted to the language's convention):
+    - test_models, test_utils, test_helpers, test_main, test_core, models_test, utils_test
+    - ModelsTest.java, UtilsTest.java
+    - models.test.ts, utils.test.ts
 
-  The architecture test should:
-  - Collect all violations before failing
-  - Report: filepath — reason (too generic / wrong pattern)
-  - Fail with a summary
+    Do NOT flag:
+    - Support/fixture/configuration files
+    - Files that follow the project's pattern with a clear subject and scenario
+    - Files that have a single focused subject even without an explicit scenario suffix
 
-  Name the output file appropriately for the language.
-  Derive everything — directories, patterns, exclusions — from the project context provided.
-claude_md_section: |
-  ## Test File Naming
+    Generate the architecture test in the same language as the project.
+    Use file system traversal appropriate for that language.
 
-  Test file names should describe both what is tested and under what condition:
+    The architecture test should:
+    - Collect all violations before failing
+    - Report: filepath — reason (too generic / wrong pattern)
+    - Fail with a summary
 
-  ```
-  # Good (Python)
-  test_account_repository_create.py
-  test_manifest_serialiser_when_empty.py
+    Name the output file appropriately for the language.
+    Derive everything — directories, patterns, exclusions — from the project context provided.
+  claude_md_section: |
+    ## Test File Naming
 
-  # Avoid — too generic
-  test_models.py
-  test_utils.py
-  ```
+    Test file names should describe both what is tested and under what condition:
 
-  The same principle applies in Go, TypeScript, and Java — the name should be specific,
-  not just a mirror of the source module.
+    ```
+    # Good (Python)
+    test_account_repository_create.py
+    test_manifest_serialiser_when_empty.py
+
+    # Avoid — too generic
+    test_models.py
+    test_utils.py
+    ```
+
+    The same principle applies in Go, TypeScript, and Java — the name should be specific,
+    not just a mirror of the source module.
+
+post_propose:
+  insert: before:Implementation
+  tasks:
+    - "Run `pytest tests/architecture/test_file_naming.py -v` — must pass before implementation\
+      \ is complete"
+    - "Do not remove, skip, or modify the file-naming architecture test without explicit\
+      \ user approval"

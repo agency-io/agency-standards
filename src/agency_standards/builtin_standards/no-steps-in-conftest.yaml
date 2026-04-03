@@ -1,62 +1,75 @@
 id: no-steps-in-conftest
 name: No Steps in Conftest
 description: conftest.py must not define step functions — steps belong in given/, when/, then/
-languages: [python, go, typescript, java]
-output_file: test_no_steps_in_conftest
 tags: [bdd]
-prompt: |
-  Generate an architecture test that forbids step function definitions in conftest.py files.
 
-  The rule: `conftest.py` (or equivalent framework configuration files) must only contain:
-  - Fixtures
-  - Wildcard imports of step packages (from .given import *, from .when import *, etc.)
+condition:
+  languages: [python, go, typescript, java]
+  features: [bdd]
 
-  Step functions decorated with @given, @when, or @then must NOT be defined in conftest.py.
-  They belong in the appropriate given/, when/, or then/ directory file.
+post_init:
+  output_file: test_no_steps_in_conftest
+  prompt: |
+    Generate an architecture test that forbids step function definitions in conftest.py files.
 
-  Mixing step definitions into conftest.py:
-  - Makes them harder to find
-  - Breaks the one-step-per-file convention
-  - Makes conftest.py a dumping ground
+    The rule: `conftest.py` (or equivalent framework configuration files) must only contain:
+    - Fixtures
+    - Wildcard imports of step packages (from .given import *, from .when import *, etc.)
 
-  Step decorator patterns by framework:
-  - Python pytest-bdd: `@given`, `@when`, `@then`
-  - Python behave: `@given`, `@when`, `@then`
-  - TypeScript Cucumber: Cucumber world/hooks files — not directly applicable
-  - Java: @Given/@When/@Then in Hooks.java — not directly applicable
+    Step functions decorated with @given, @when, or @then must NOT be defined in conftest.py.
+    They belong in the appropriate given/, when/, or then/ directory file.
 
-  Before generating, examine the project context to determine:
-  - The primary language and BDD framework
-  - Where conftest.py files exist within the e2e test structure
-  - The exact decorator names used in this project (infer from sample files)
+    Mixing step definitions into conftest.py:
+    - Makes them harder to find
+    - Breaks the one-step-per-file convention
+    - Makes conftest.py a dumping ground
 
-  Generate the architecture test in the same language as the project.
+    Step decorator patterns by framework:
+    - Python pytest-bdd: `@given`, `@when`, `@then`
+    - Python behave: `@given`, `@when`, `@then`
+    - TypeScript Cucumber: Cucumber world/hooks files — not directly applicable
+    - Java: @Given/@When/@Then in Hooks.java — not directly applicable
 
-  The architecture test should:
-  - Find all conftest.py files in e2e/step directories
-  - Check each for step decorator usage
-  - Collect all violations before failing
-  - Report: filepath — step function "X" with @given/@when/@then found in conftest
-  - Fail with a summary
+    Before generating, examine the project context to determine:
+    - The primary language and BDD framework
+    - Where conftest.py files exist within the e2e test structure
+    - The exact decorator names used in this project (infer from sample files)
 
-  Name the output file appropriately for the language.
-  Derive conftest locations from the project context provided.
-claude_md_section: |
-  ## No Steps in Conftest
+    Generate the architecture test in the same language as the project.
 
-  `conftest.py` is for fixtures and wildcard step imports only. Step functions must live
-  in given/, when/, then/ directories:
+    The architecture test should:
+    - Find all conftest.py files in e2e/step directories
+    - Check each for step decorator usage
+    - Collect all violations before failing
+    - Report: filepath — step function "X" with @given/@when/@then found in conftest
+    - Fail with a summary
 
-  ```python
-  # conftest.py — OK
-  from .given import *  # noqa: F401,F403
-  from .when import *   # noqa: F401,F403
-  from .then import *   # noqa: F401,F403
+    Name the output file appropriately for the language.
+    Derive conftest locations from the project context provided.
+  claude_md_section: |
+    ## No Steps in Conftest
 
-  @pytest.fixture
-  def lws_session(): ...
+    `conftest.py` is for fixtures and wildcard step imports only. Step functions must live
+    in given/, when/, then/ directories:
 
-  # conftest.py — NOT OK
-  @given("a table exists")          # belongs in given/a_table_exists.py
-  def a_table_exists(lws_session): ...
-  ```
+    ```python
+    # conftest.py — OK
+    from .given import *  # noqa: F401,F403
+    from .when import *   # noqa: F401,F403
+    from .then import *   # noqa: F401,F403
+
+    @pytest.fixture
+    def lws_session(): ...
+
+    # conftest.py — NOT OK
+    @given("a table exists")          # belongs in given/a_table_exists.py
+    def a_table_exists(lws_session): ...
+    ```
+
+post_propose:
+  insert: before:Implementation
+  tasks:
+    - "Run `pytest tests/architecture/test_no_steps_in_conftest.py -v` — must pass before\
+      \ implementation is complete"
+    - "Do not remove, skip, or modify the no-steps-in-conftest architecture test without\
+      \ explicit user approval"

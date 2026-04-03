@@ -1,58 +1,70 @@
 id: no-bare-except
 name: No Bare Except / Catch-All Error Handling
 description: Error handlers must always specify the exception or error type — no catch-all handlers
-languages: [python, go, typescript, java]
 tags: [general]
-output_file: test_no_bare_except
-prompt: |
-  Generate an architecture test that forbids untyped catch-all error handlers in the
-  project's source code (not tests).
 
-  The rule varies by language but the intent is the same — always name what you are catching:
-  - Python: forbid bare `except:` with no exception type
-  - Go: not applicable (Go uses explicit error values, not exceptions) — skip this standard
-  - TypeScript/JavaScript: forbid `catch(e)` where e is never narrowed or typed, or
-    empty catch blocks `catch {}` — flag catch blocks where the error is ignored entirely
-  - Java: forbid `catch (Exception e)` or `catch (Throwable e)` at the top level where
-    a more specific type would be appropriate; always flag empty catch blocks
+condition:
+  languages: [python, go, typescript, java]
 
-  Before generating, examine the project context to determine:
-  - The primary language
-  - Whether the language uses exceptions or error values
-  - The actual source directories to scan (src/, app/, lib/, cmd/, or similar)
-  - The test framework to use for the architecture test itself
+post_init:
+  output_file: test_no_bare_except
+  prompt: |
+    Generate an architecture test that forbids untyped catch-all error handlers in the
+    project's source code (not tests).
 
-  If the language does not use exceptions (e.g. Go), generate a test that passes
-  immediately with a skip message explaining why the check is not applicable.
+    The rule varies by language but the intent is the same — always name what you are catching:
+    - Python: forbid bare `except:` with no exception type
+    - Go: not applicable (Go uses explicit error values, not exceptions) — skip this standard
+    - TypeScript/JavaScript: forbid `catch(e)` where e is never narrowed or typed, or
+      empty catch blocks `catch {}` — flag catch blocks where the error is ignored entirely
+    - Java: forbid `catch (Exception e)` or `catch (Throwable e)` at the top level where
+      a more specific type would be appropriate; always flag empty catch blocks
 
-  Generate the architecture test in the same language as the project.
-  Use static analysis appropriate for that language to detect violations.
+    Before generating, examine the project context to determine:
+    - The primary language
+    - Whether the language uses exceptions or error values
+    - The actual source directories to scan (src/, app/, lib/, cmd/, or similar)
+    - The test framework to use for the architecture test itself
 
-  The architecture test should:
-  - Scan source directories only, not test directories
-  - Collect ALL violations before failing
-  - Report each as: filename:line_number — bare/untyped handler found
-  - Fail with a summary
+    If the language does not use exceptions (e.g. Go), generate a test that passes
+    immediately with a skip message explaining why the check is not applicable.
 
-  Name the output file appropriately for the language.
-  Derive source directories from the project context provided.
-claude_md_section: |
-  ## No Bare / Catch-All Error Handling
+    Generate the architecture test in the same language as the project.
+    Use static analysis appropriate for that language to detect violations.
 
-  Always name the specific exception or error type you are handling:
+    The architecture test should:
+    - Scan source directories only, not test directories
+    - Collect ALL violations before failing
+    - Report each as: filename:line_number — bare/untyped handler found
+    - Fail with a summary
 
-  ```python
-  # Python — bad
-  try:
-      do_something()
-  except:
-      pass
+    Name the output file appropriately for the language.
+    Derive source directories from the project context provided.
+  claude_md_section: |
+    ## No Bare / Catch-All Error Handling
 
-  # Python — good
-  try:
-      do_something()
-  except ValueError as e:
-      handle(e)
-  ```
+    Always name the specific exception or error type you are handling:
 
-  Empty catch blocks that silently swallow errors are also forbidden.
+    ```python
+    # Python — bad
+    try:
+        do_something()
+    except:
+        pass
+
+    # Python — good
+    try:
+        do_something()
+    except ValueError as e:
+        handle(e)
+    ```
+
+    Empty catch blocks that silently swallow errors are also forbidden.
+
+post_propose:
+  insert: before:Implementation
+  tasks:
+    - "Run `pytest tests/architecture/test_no_bare_except.py -v` — must pass before\
+      \ implementation is complete"
+    - "Do not remove, skip, or modify the no-bare-except architecture test without explicit\
+      \ user approval"

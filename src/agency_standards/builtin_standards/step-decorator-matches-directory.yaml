@@ -1,48 +1,61 @@
 id: step-decorator-matches-directory
 name: Step Decorator Matches Directory
 description: "@given decorators must be in given/, @when in when/, @then in then/"
-languages: [python, go, typescript, java]
-output_file: test_step_decorator_matches_directory
 tags: [bdd]
-prompt: |
-  Generate an architecture test that enforces that step decorators match their containing directory.
 
-  The rule:
-  - Files in given/ directories must only use @given (or Given()) decorators
-  - Files in when/ directories must only use @when (or When()) decorators
-  - Files in then/ directories must only use @then (or Then()) decorators
+condition:
+  languages: [python, go, typescript, java]
+  features: [bdd]
 
-  A step in the wrong directory is confusing and breaks the navigability convention where
-  you know exactly which directory to look in for a step based on its type.
+post_init:
+  output_file: test_step_decorator_matches_directory
+  prompt: |
+    Generate an architecture test that enforces that step decorators match their containing directory.
 
-  Step decorator patterns by framework:
-  - Python: `@given`, `@when`, `@then`
-  - TypeScript: `Given(`, `When(`, `Then(`
-  - Java: `@Given`, `@When`, `@Then`
-  - Go: step registration in `AddScenarioHooks` (Given/When/Then separation by naming convention)
+    The rule:
+    - Files in given/ directories must only use @given (or Given()) decorators
+    - Files in when/ directories must only use @when (or When()) decorators
+    - Files in then/ directories must only use @then (or Then()) decorators
 
-  Before generating, examine the project context to determine:
-  - The primary language and BDD framework
-  - The actual step directory structure (some projects nest as e2e/<service>/given/ etc.)
-  - Any support files to exclude (__init__.py, index files, world/context files)
+    A step in the wrong directory is confusing and breaks the navigability convention where
+    you know exactly which directory to look in for a step based on its type.
 
-  Generate the architecture test in the same language as the project.
+    Step decorator patterns by framework:
+    - Python: `@given`, `@when`, `@then`
+    - TypeScript: `Given(`, `When(`, `Then(`
+    - Java: `@Given`, `@When`, `@Then`
+    - Go: step registration in `AddScenarioHooks` (Given/When/Then separation by naming convention)
 
-  The architecture test should:
-  - Find all given/, when/, then/ directories recursively
-  - For each file in those directories, check that decorators match the directory type
-  - Collect all violations before failing
-  - Report: filename — @when decorator found in given/ directory (or equivalent)
-  - Fail with a summary
+    Before generating, examine the project context to determine:
+    - The primary language and BDD framework
+    - The actual step directory structure (some projects nest as e2e/<service>/given/ etc.)
+    - Any support files to exclude (__init__.py, index files, world/context files)
 
-  Name the output file appropriately for the language.
-  Derive step directories from the project context provided.
-claude_md_section: |
-  ## Step Decorator Matches Directory
+    Generate the architecture test in the same language as the project.
 
-  Step decorators must match the directory they are in:
-  - `given/` — only `@given` / `Given()` / `@Given`
-  - `when/` — only `@when` / `When()` / `@When`
-  - `then/` — only `@then` / `Then()` / `@Then`
+    The architecture test should:
+    - Find all given/, when/, then/ directories recursively
+    - For each file in those directories, check that decorators match the directory type
+    - Collect all violations before failing
+    - Report: filename — @when decorator found in given/ directory (or equivalent)
+    - Fail with a summary
 
-  If you find yourself putting a @when in a given/ file, it belongs in when/.
+    Name the output file appropriately for the language.
+    Derive step directories from the project context provided.
+  claude_md_section: |
+    ## Step Decorator Matches Directory
+
+    Step decorators must match the directory they are in:
+    - `given/` — only `@given` / `Given()` / `@Given`
+    - `when/` — only `@when` / `When()` / `@When`
+    - `then/` — only `@then` / `Then()` / `@Then`
+
+    If you find yourself putting a @when in a given/ file, it belongs in when/.
+
+post_propose:
+  insert: before:Implementation
+  tasks:
+    - "Run `pytest tests/architecture/test_step_decorator_matches_directory.py -v` — must\
+      \ pass before implementation is complete"
+    - "Do not remove, skip, or modify the step-decorator-matches-directory architecture\
+      \ test without explicit user approval"

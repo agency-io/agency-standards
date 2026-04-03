@@ -1,51 +1,64 @@
 id: step-file-name-matches-function
 name: Step File Name Matches Function
 description: The step file name must match the decorated step function name it contains
-languages: [python, go, typescript, java]
-output_file: test_step_file_name_matches_function
 tags: [bdd]
-prompt: |
-  Generate an architecture test that enforces that step file names match the function they define.
 
-  The rule: since each step file defines exactly one step function, the file name should
-  match the function name so you can find any step in O(1) without searching. This makes
-  the step directory self-documenting.
+condition:
+  languages: [python, go, typescript, java]
+  features: [bdd]
 
-  Matching rules:
-  - Exact match: `create_table.py` contains `def create_table(...)`
-  - Suffix allowed: `create_table_given.py` contains `def create_table(...)` in a given/ directory
-  - The match is case-insensitive and ignores leading/trailing underscores
+post_init:
+  output_file: test_step_file_name_matches_function
+  prompt: |
+    Generate an architecture test that enforces that step file names match the function they define.
 
-  Before generating, examine the project context to determine:
-  - The primary language and BDD framework
-  - The actual step directory paths
-  - The file extension for step files in this project (.py, .ts, Steps.java, etc.)
-  - Support files to exclude (__init__.py, index files, etc.)
+    The rule: since each step file defines exactly one step function, the file name should
+    match the function name so you can find any step in O(1) without searching. This makes
+    the step directory self-documenting.
 
-  Generate the architecture test in the same language as the project.
-  Use filename parsing and function name extraction.
+    Matching rules:
+    - Exact match: `create_table.py` contains `def create_table(...)`
+    - Suffix allowed: `create_table_given.py` contains `def create_table(...)` in a given/ directory
+    - The match is case-insensitive and ignores leading/trailing underscores
 
-  The architecture test should:
-  - Scan all files in given/, when/, then/ directories (excluding support files)
-  - Extract the step function name and compare to the file stem
-  - Collect all violations before failing
-  - Report: filename — defines function "X" but file is named "Y"
-  - Fail with a summary
+    Before generating, examine the project context to determine:
+    - The primary language and BDD framework
+    - The actual step directory paths
+    - The file extension for step files in this project (.py, .ts, Steps.java, etc.)
+    - Support files to exclude (__init__.py, index files, etc.)
 
-  Name the output file appropriately for the language.
-  Derive step directories from the project context provided.
-claude_md_section: |
-  ## Step File Name Matches Function
+    Generate the architecture test in the same language as the project.
+    Use filename parsing and function name extraction.
 
-  The name of a step file must match the function it defines:
+    The architecture test should:
+    - Scan all files in given/, when/, then/ directories (excluding support files)
+    - Extract the step function name and compare to the file stem
+    - Collect all violations before failing
+    - Report: filename — defines function "X" but file is named "Y"
+    - Fail with a summary
 
-  ```
-  # Good
-  given/a_table_exists.py       → def a_table_exists(...)
-  when/i_delete_the_table.py    → def i_delete_the_table(...)
+    Name the output file appropriately for the language.
+    Derive step directories from the project context provided.
+  claude_md_section: |
+    ## Step File Name Matches Function
 
-  # Bad
-  given/setup.py                → def a_table_exists(...)  ← name mismatch
-  ```
+    The name of a step file must match the function it defines:
 
-  This makes any step findable in O(1) — you always know which file to look in.
+    ```
+    # Good
+    given/a_table_exists.py       → def a_table_exists(...)
+    when/i_delete_the_table.py    → def i_delete_the_table(...)
+
+    # Bad
+    given/setup.py                → def a_table_exists(...)  ← name mismatch
+    ```
+
+    This makes any step findable in O(1) — you always know which file to look in.
+
+post_propose:
+  insert: before:Implementation
+  tasks:
+    - "Run `pytest tests/architecture/test_step_file_name_matches_function.py -v` — must\
+      \ pass before implementation is complete"
+    - "Do not remove, skip, or modify the step-file-name-matches-function architecture\
+      \ test without explicit user approval"

@@ -1,55 +1,68 @@
 id: one-step-per-file
 name: One Step Per File
 description: Each file in given/, when/, then/ directories must define exactly one step function
-languages: [python, go, typescript, java]
-output_file: test_one_step_per_file
 tags: [bdd]
-prompt: |
-  Generate an architecture test that enforces one step function per step definition file.
 
-  The rule: each file in a given/, when/, or then/ directory must define exactly one
-  decorated step function. Having multiple steps in one file:
-  - Makes it hard to find which file defines a given step
-  - Encourages copy-paste between related steps
-  - Obscures the relationship between file name and step name
+condition:
+  languages: [python, go, typescript, java]
+  features: [bdd]
 
-  Step function decorators by framework:
-  - Python pytest-bdd: `@given`, `@when`, `@then`
-  - Python behave: `@given`, `@when`, `@then`
-  - TypeScript Cucumber: `Given(`, `When(`, `Then(`
-  - Java Cucumber: `@Given`, `@When`, `@Then`
-  - Go Godog: `s.Step(` or `ctx.Step(` (one per file)
+post_init:
+  output_file: test_one_step_per_file
+  prompt: |
+    Generate an architecture test that enforces one step function per step definition file.
 
-  Before generating, examine the project context to determine:
-  - The primary language and BDD framework
-  - The actual step directory paths (given/, when/, then/ under e2e/ or tests/)
-  - Support files to exclude (__init__.py, index.ts, world.ts, hooks files)
+    The rule: each file in a given/, when/, or then/ directory must define exactly one
+    decorated step function. Having multiple steps in one file:
+    - Makes it hard to find which file defines a given step
+    - Encourages copy-paste between related steps
+    - Obscures the relationship between file name and step name
 
-  Generate the architecture test in the same language as the project.
-  Use string/regex scanning or AST as appropriate.
+    Step function decorators by framework:
+    - Python pytest-bdd: `@given`, `@when`, `@then`
+    - Python behave: `@given`, `@when`, `@then`
+    - TypeScript Cucumber: `Given(`, `When(`, `Then(`
+    - Java Cucumber: `@Given`, `@When`, `@Then`
+    - Go Godog: `s.Step(` or `ctx.Step(` (one per file)
 
-  The architecture test should:
-  - Scan all files in given/, when/, then/ directories
-  - Count step decorators per file
-  - Flag files with 0 or more than 1 step function
-  - Collect all violations before failing
-  - Report: filename — N step functions found (expected exactly 1)
-  - Fail with a summary
+    Before generating, examine the project context to determine:
+    - The primary language and BDD framework
+    - The actual step directory paths (given/, when/, then/ under e2e/ or tests/)
+    - Support files to exclude (__init__.py, index.ts, world.ts, hooks files)
 
-  Name the output file appropriately for the language.
-  Derive step directories from the project context provided.
-claude_md_section: |
-  ## One Step Per File
+    Generate the architecture test in the same language as the project.
+    Use string/regex scanning or AST as appropriate.
 
-  Each file in given/, when/, then/ directories must define exactly one step function.
-  The file name should describe the step it contains.
+    The architecture test should:
+    - Scan all files in given/, when/, then/ directories
+    - Count step decorators per file
+    - Flag files with 0 or more than 1 step function
+    - Collect all violations before failing
+    - Report: filename — N step functions found (expected exactly 1)
+    - Fail with a summary
 
-  ```
-  # Good
-  given/a_table_exists.py          → def a_table_exists(...)
-  when/i_delete_the_table.py       → def i_delete_the_table(...)
-  then/the_table_will_not_exist.py → def the_table_will_not_exist(...)
+    Name the output file appropriately for the language.
+    Derive step directories from the project context provided.
+  claude_md_section: |
+    ## One Step Per File
 
-  # Bad — multiple steps in one file
-  given/table_steps.py  → def a_table_exists(...) + def a_table_is_active(...)
-  ```
+    Each file in given/, when/, then/ directories must define exactly one step function.
+    The file name should describe the step it contains.
+
+    ```
+    # Good
+    given/a_table_exists.py          → def a_table_exists(...)
+    when/i_delete_the_table.py       → def i_delete_the_table(...)
+    then/the_table_will_not_exist.py → def the_table_will_not_exist(...)
+
+    # Bad — multiple steps in one file
+    given/table_steps.py  → def a_table_exists(...) + def a_table_is_active(...)
+    ```
+
+post_propose:
+  insert: before:Implementation
+  tasks:
+    - "Run `pytest tests/architecture/test_one_step_per_file.py -v` — must pass before\
+      \ implementation is complete"
+    - "Do not remove, skip, or modify the one-step-per-file architecture test without\
+      \ explicit user approval"

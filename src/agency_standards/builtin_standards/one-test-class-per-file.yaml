@@ -1,59 +1,71 @@
 id: one-test-class-per-file
 name: One Test Class Per File
 description: Each unit test file should contain at most one test class, grouping tests for a single logical area
-languages: [python, go, typescript, java]
 tags: [general]
-output_file: test_one_test_class_per_file
-prompt: |
-  Generate an architecture test that enforces one test class per unit test file.
 
-  The rule: each file in the unit test directory should contain at most one test class.
-  Multiple test classes in a single file tend to indicate the file covers too broad an area.
-  Instead, split by operation or scenario into separate focused files.
+condition:
+  languages: [python, go, typescript, java]
 
-  Before generating, examine the project context to determine:
-  - The primary language
-  - The test framework in use
-  - What counts as a "test class" in that language and framework:
-    - Python pytest: class whose name starts with Test
-    - Python unittest: class that inherits from unittest.TestCase
-    - Go: Go does not use classes for tests — this standard does not apply; generate a
-      test that passes immediately with a note explaining why
-    - TypeScript Jest/Vitest: describe() blocks at the top level (not nested)
-    - Java JUnit: public class ending in Test
-  - The unit test directory paths
-  - Any support/fixture files that should be excluded (conftest.py, __init__.py, helpers, etc.)
+post_init:
+  output_file: test_one_test_class_per_file
+  prompt: |
+    Generate an architecture test that enforces one test class per unit test file.
 
-  Do NOT flag:
-  - Files with zero or one test class
-  - Support files (conftest, fixtures, helpers, step definitions)
-  - Integration or e2e test files (only unit tests)
+    The rule: each file in the unit test directory should contain at most one test class.
+    Multiple test classes in a single file tend to indicate the file covers too broad an area.
+    Instead, split by operation or scenario into separate focused files.
 
-  Generate the architecture test in the same language as the project.
+    Before generating, examine the project context to determine:
+    - The primary language
+    - The test framework in use
+    - What counts as a "test class" in that language and framework:
+      - Python pytest: class whose name starts with Test
+      - Python unittest: class that inherits from unittest.TestCase
+      - Go: Go does not use classes for tests — this standard does not apply; generate a
+        test that passes immediately with a note explaining why
+      - TypeScript Jest/Vitest: describe() blocks at the top level (not nested)
+      - Java JUnit: public class ending in Test
+    - The unit test directory paths
+    - Any support/fixture files that should be excluded (conftest.py, __init__.py, helpers, etc.)
 
-  The architecture test should:
-  - Scan the unit test directory only
-  - Collect all violations before failing
-  - Report: filename — N test classes found: [TestClass1, TestClass2, ...]
-  - Fail with a summary
+    Do NOT flag:
+    - Files with zero or one test class
+    - Support files (conftest, fixtures, helpers, step definitions)
+    - Integration or e2e test files (only unit tests)
 
-  Name the output file appropriately for the language.
-  Derive unit test directory from the project context provided.
-claude_md_section: |
-  ## One Test Class Per File
+    Generate the architecture test in the same language as the project.
 
-  Each unit test file should contain at most one test class. If a file grows to cover
-  multiple operations or scenarios, split it:
+    The architecture test should:
+    - Scan the unit test directory only
+    - Collect all violations before failing
+    - Report: filename — N test classes found: [TestClass1, TestClass2, ...]
+    - Fail with a summary
 
-  ```
-  # Instead of one large file:
-  test_account_repository.py  (contains TestCreate, TestUpdate, TestDelete)
+    Name the output file appropriately for the language.
+    Derive unit test directory from the project context provided.
+  claude_md_section: |
+    ## One Test Class Per File
 
-  # Prefer focused files:
-  test_account_repository_create.py   (contains TestCreate)
-  test_account_repository_update.py   (contains TestUpdate)
-  test_account_repository_delete.py   (contains TestDelete)
-  ```
+    Each unit test file should contain at most one test class. If a file grows to cover
+    multiple operations or scenarios, split it:
 
-  This pairs with the file naming standard — if a file needs two test classes,
-  it is a signal the file name is also too generic.
+    ```
+    # Instead of one large file:
+    test_account_repository.py  (contains TestCreate, TestUpdate, TestDelete)
+
+    # Prefer focused files:
+    test_account_repository_create.py   (contains TestCreate)
+    test_account_repository_update.py   (contains TestUpdate)
+    test_account_repository_delete.py   (contains TestDelete)
+    ```
+
+    This pairs with the file naming standard — if a file needs two test classes,
+    it is a signal the file name is also too generic.
+
+post_propose:
+  insert: before:Implementation
+  tasks:
+    - "Run `pytest tests/architecture/test_one_test_class_per_file.py -v` — must pass\
+      \ before implementation is complete"
+    - "Do not remove, skip, or modify the one-test-class-per-file architecture test without\
+      \ explicit user approval"

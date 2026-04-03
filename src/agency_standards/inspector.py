@@ -19,6 +19,7 @@ def inspect(root: Path) -> ProjectContext:
     _load_pyproject(ctx)
     _detect_project_type(ctx)
     _detect_bdd(ctx)
+    _detect_openspec(ctx)
     return ctx
 
 
@@ -125,6 +126,10 @@ def _detect_bdd(ctx: ProjectContext) -> None:
     deps_str = " ".join(all_deps).lower()
     has_bdd_dep = any(k in deps_str for k in ("pytest-bdd", "behave", "cucumber", "godog"))
     ctx.uses_bdd = bool(ctx.feature_files or ctx.step_dirs or has_bdd_dep)
+
+
+def _detect_openspec(ctx: ProjectContext) -> None:
+    ctx.uses_openspec = (ctx.root / "openspec").is_dir()
 
 
 def _detect_project_type(ctx: ProjectContext) -> None:

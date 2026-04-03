@@ -1,0 +1,183 @@
+id: adr
+name: ADR Format and Lifecycle
+description: Architectural Decision Records must follow required structure, naming, and sequencing conventions
+tags: [general]
+
+post_init:
+  output_file: test_adr
+  prompt: |
+    Generate an architecture test that enforces ADR (Architectural Decision Record) conventions.
+
+    ## ADR directory detection
+
+    Check the following locations in order and use the first one that exists:
+    1. `openspec/adrs/`  (OpenSpec projects)
+    2. `docs/adr/`       (common Nygard-style convention)
+    3. `adr/`            (flat convention)
+    4. `docs/decisions/`
+
+    If none of these directories exist the test must pass immediately — ADRs are only
+    required once at least one directory is present and contains at least one entry.
+
+    ## Naming rules
+
+    Every entry in the ADR directory must be a subdirectory named `adr-NNN-<slug>/` where:
+    - NNN is a zero-padded three-digit number (001, 002, ..., 042, etc.)
+    - <slug> is one or more lowercase kebab-case words (letters, digits, hyphens only)
+    - Example valid names: `adr-001-sqlite-storage`, `adr-012-provider-pattern`
+    - Flag any directory that does not match this pattern
+
+    ADR numbers must be sequential starting from 001 with no gaps.
+    - Collect all numbers, sort them, and verify they form a contiguous sequence from 001
+    - Flag the sequence if any number is missing
+
+    ## Required file
+
+    Each `adr-NNN-<slug>/` directory must contain `adr.md`.
+    Flag any ADR directory missing this file.
+
+    ## Required sections
+
+    Each `adr.md` must contain all six of these section headers (exact text, case-insensitive match):
+    - `## Status`
+    - `## Context`
+    - `## Options Considered`
+    - `## Decision`
+    - `## Rationale`
+    - `## Consequences`
+
+    Flag any `adr.md` missing one or more of these sections.
+
+    ## Status values
+
+    The `## Status` section must contain one of these values (case-insensitive):
+    `Proposed`, `Accepted`, `Deprecated`, or `Superseded by ADR-NNN`
+    Flag any `adr.md` whose Status section contains none of these values.
+
+    ## OpenSpec reference files (OpenSpec projects only)
+
+    If the ADR directory is `openspec/adrs/`, files inside an ADR directory other than
+    `adr.md` must follow one of these naming patterns:
+    - `proposal-<change-id>.md` where <change-id> is kebab-case
+    - `apply-<change-id>.md` where <change-id> is kebab-case
+    Flag any file that does not match `adr.md`, `proposal-*.md`, or `apply-*.md`.
+    Skip this check for non-OpenSpec ADR directories.
+
+    ## Test structure
+
+    The architecture test should:
+    - Detect which ADR directory is in use (check the four locations above)
+    - Skip (pass) immediately if no ADR directory exists
+    - Collect ALL violations across all checks before failing
+    - Report each violation as: path — clear description of the problem
+    - Fail with a summary count of violations
+
+    Use plain file reading and regex — no external libraries beyond pytest and pathlib.
+    Generate the test in Python regardless of the project's primary language, since
+    ADRs are a documentation layer, not a code layer.
+
+  claude_md_section: |
+    ## ADR Format and Lifecycle
+
+    ADRs (Architectural Decision Records) capture significant project-level decisions
+    that future contributors need to understand.
+
+    ### ADR directory
+
+    Use whichever location is already established in the project:
+    - `openspec/adrs/` — OpenSpec projects
+    - `docs/adr/` — Nygard-style convention
+    - `adr/` — flat convention
+    - `docs/decisions/` — alternative convention
+
+    ### When to create an ADR
+
+    The default criteria are listed below. Projects can override them by adding an
+    `## ADR Criteria` section to a project spec or README — if that section exists,
+    use it instead of the defaults.
+
+    Default: create an ADR when a decision:
+    - Defines how two or more systems or services integrate
+    - Introduces or removes an external library or framework dependency
+    - Establishes a design pattern reused across multiple components
+    - Sets a constraint based on an external service limit or protocol behaviour
+    - Defines a schema or data model that multiple components depend on
+
+    ### Directory naming
+
+    ```
+    <adr-dir>/adr-NNN-<slug>/
+    ```
+
+    - NNN is a zero-padded sequential number: 001, 002, 003 ...
+    - <slug> is a short kebab-case description: `sqlite-storage`, `provider-pattern`
+    - Numbers must be sequential with no gaps
+
+    ### Required file: adr.md
+
+    Every ADR directory must contain `adr.md` with all six sections:
+
+    ```markdown
+    # ADR-NNN: Title
+
+    ## Status
+    Proposed | Accepted | Deprecated | Superseded by ADR-NNN
+
+    ## Context
+    Background: what situation or constraint led to this decision.
+
+    ## Options Considered
+    - **Option A** — description and trade-offs
+    - **Option B** — description and trade-offs
+
+    ## Decision
+    What was decided, stated clearly and specifically.
+
+    ## Rationale
+    Why this option was chosen over the alternatives.
+
+    ## Consequences
+    - What becomes easier as a result
+    - What becomes harder or is now constrained
+    ```
+
+    ### Reference tracking files (OpenSpec projects)
+
+    When using `openspec/adrs/`, write a small reference file inside the ADR directory
+    to create a forward-trace when the ADR is consulted or created during a change:
+
+    - `proposal-<change-id>.md` — written during the proposal stage
+    - `apply-<change-id>.md` — written during the implementation stage
+
+    No other file types are permitted in an OpenSpec ADR directory.
+
+    ### Supersession
+
+    When a newer decision overrides an older one:
+    1. Update the old ADR's `## Status` to `Superseded by ADR-NNN`
+    2. In the new ADR's `## Context`, reference the old ADR and explain why it no longer holds
+
+post_propose:
+  insert: before:Implementation
+  tasks:
+    - "Scan the project ADR directory for ADRs whose topic overlaps with this change —\
+      \ read `adr.md` for any that apply"
+    - "If the project uses OpenSpec (`openspec/adrs/`), write `proposal-<change-id>.md`\
+      \ in each consulted ADR directory"
+    - "Check for a custom `## ADR Criteria` section in the project spec or README;\
+      \ if present, use it; otherwise use the defaults in CLAUDE.md"
+    - "If this change introduces a decision meeting the ADR criteria, create a new ADR\
+      \ under `<adr-dir>/adr-NNN-<slug>/` before writing specs"
+    - "Run `pytest tests/architecture/test_adr.py -v` — must pass before implementation\
+      \ is complete"
+    - "Do not remove, skip, or modify the adr architecture test without explicit user approval"
+
+post_apply:
+  insert: before:Implementation
+  tasks:
+    - "For each ADR consulted during implementation, write `apply-<change-id>.md` in\
+      \ the ADR directory (OpenSpec projects only)"
+    - "If a new ADR was created during implementation, write `apply-<change-id>.md`\
+      \ in its directory recording how the decision shaped the implementation"
+    - "Run `pytest tests/architecture/test_adr.py -v` to confirm all ADR files\
+      \ pass format checks before marking implementation complete"

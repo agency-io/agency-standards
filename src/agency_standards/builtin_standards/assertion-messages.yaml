@@ -1,60 +1,72 @@
 id: assertion-messages
 name: Assertion Failure Messages
 description: Every assertion must include a human-readable failure message
-languages: [python, go, typescript, java]
 tags: [general]
-output_file: test_assertion_messages
-prompt: |
-  Generate an architecture test that enforces that every assertion in unit and integration
-  test files includes a human-readable failure message.
 
-  The rule varies by language and framework:
-  - Python assert: `assert expr, "message"` — the second argument is the message
-  - Python unittest: `self.assertEqual(a, b, msg="message")` — msg= argument required
-  - Go testing: `t.Errorf("expected %v but got %v", want, got)` — message already required by style
-  - Go testify: `assert.Equal(t, want, got, "message")` — third argument is message
-  - TypeScript Jest/Vitest: `expect(actual).toBe(expected)` — add `.withMessage()` or use
-    a custom matcher; flag assertions that have no surrounding comment or description
-  - Java JUnit 5: `assertEquals(expected, actual, "message")` — third argument required
-  - Java JUnit 4: `assertEquals("message", expected, actual)` — first argument required
+condition:
+  languages: [python, go, typescript, java]
 
-  Before generating, examine the project context to determine:
-  - The primary language
-  - The test framework and assertion style — infer from the build file and sample test files
-  - Whether the project mixes assertion styles
-  - The test file naming pattern and directories
-  - Whether BDD step files are present — skip those
+post_init:
+  output_file: test_assertion_messages
+  prompt: |
+    Generate an architecture test that enforces that every assertion in unit and integration
+    test files includes a human-readable failure message.
 
-  For frameworks where failure messages are optional (Python assert, Java JUnit), enforce
-  that every comparison assertion has a message. For frameworks where messages are built in
-  to the output format (Go t.Errorf), generate a test that passes with a note.
+    The rule varies by language and framework:
+    - Python assert: `assert expr, "message"` — the second argument is the message
+    - Python unittest: `self.assertEqual(a, b, msg="message")` — msg= argument required
+    - Go testing: `t.Errorf("expected %v but got %v", want, got)` — message already required by style
+    - Go testify: `assert.Equal(t, want, got, "message")` — third argument is message
+    - TypeScript Jest/Vitest: `expect(actual).toBe(expected)` — add `.withMessage()` or use
+      a custom matcher; flag assertions that have no surrounding comment or description
+    - Java JUnit 5: `assertEquals(expected, actual, "message")` — third argument required
+    - Java JUnit 4: `assertEquals("message", expected, actual)` — first argument required
 
-  Exceptions allowed:
-  - Null/nil/None/undefined checks
-  - Simple boolean truthiness checks
-  - BDD step files
+    Before generating, examine the project context to determine:
+    - The primary language
+    - The test framework and assertion style — infer from the build file and sample test files
+    - Whether the project mixes assertion styles
+    - The test file naming pattern and directories
+    - Whether BDD step files are present — skip those
 
-  Generate the architecture test in the same language as the project.
+    For frameworks where failure messages are optional (Python assert, Java JUnit), enforce
+    that every comparison assertion has a message. For frameworks where messages are built in
+    to the output format (Go t.Errorf), generate a test that passes with a note.
 
-  The architecture test should:
-  - Collect all violations before failing
-  - Report: filename:line_number — test_name — assertion without message
-  - Fail with a summary
+    Exceptions allowed:
+    - Null/nil/None/undefined checks
+    - Simple boolean truthiness checks
+    - BDD step files
 
-  Name the output file appropriately for the language.
-  Derive directories from the project context provided.
-claude_md_section: |
-  ## Assertion Failure Messages
+    Generate the architecture test in the same language as the project.
 
-  Every comparison assertion must include a failure message:
+    The architecture test should:
+    - Collect all violations before failing
+    - Report: filename:line_number — test_name — assertion without message
+    - Fail with a summary
 
-  ```python
-  # Python — bad
-  assert actual_count == expected_count
+    Name the output file appropriately for the language.
+    Derive directories from the project context provided.
+  claude_md_section: |
+    ## Assertion Failure Messages
 
-  # Python — good
-  assert actual_count == expected_count, f"Expected {expected_count} but got {actual_count}"
-  ```
+    Every comparison assertion must include a failure message:
 
-  This applies across languages: msg= in unittest, the message argument in JUnit, the
-  description string in testify, etc.
+    ```python
+    # Python — bad
+    assert actual_count == expected_count
+
+    # Python — good
+    assert actual_count == expected_count, f"Expected {expected_count} but got {actual_count}"
+    ```
+
+    This applies across languages: msg= in unittest, the message argument in JUnit, the
+    description string in testify, etc.
+
+post_propose:
+  insert: before:Implementation
+  tasks:
+    - "Run `pytest tests/architecture/test_assertion_messages.py -v` — must pass before\
+      \ implementation is complete"
+    - "Do not remove, skip, or modify the assertion-messages architecture test without\
+      \ explicit user approval"

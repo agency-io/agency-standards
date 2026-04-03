@@ -1,51 +1,64 @@
 id: init-imports-all-steps
 name: Init Imports All Steps
 description: Each given/, when/, then/ directory must have an __init__.py (or index file) that imports every step file
-languages: [python, go, typescript, java]
-output_file: test_init_imports_all_steps
 tags: [bdd]
-prompt: |
-  Generate an architecture test that enforces that step directories export all their step files.
 
-  The rule: each given/, when/, then/ directory must have a module init file that imports
-  every step file defined in that directory. This is required for the BDD framework to
-  discover steps automatically via the conftest wildcard import.
+condition:
+  languages: [python, go, typescript, java]
+  features: [bdd]
 
-  The init file pattern by language/framework:
-  - Python: `__init__.py` with `from .<step_file> import *  # noqa: F401,F403` for each step file
-  - TypeScript: `index.ts` with `export * from './<step_file>'` for each step file
-  - Java: Step files are discovered by Cucumber via classpath scanning — no init file needed;
-    generate a test that passes with a note
-  - Go: Package-level registration; generate a test that passes with a note
+post_init:
+  output_file: test_init_imports_all_steps
+  prompt: |
+    Generate an architecture test that enforces that step directories export all their step files.
 
-  Before generating, examine the project context to determine:
-  - The primary language and BDD framework
-  - The actual step directory structure
-  - What the init file should look like for this framework (infer from existing __init__.py
-    files in step directories if present in the sample files)
+    The rule: each given/, when/, then/ directory must have a module init file that imports
+    every step file defined in that directory. This is required for the BDD framework to
+    discover steps automatically via the conftest wildcard import.
 
-  Generate the architecture test in the same language as the project.
+    The init file pattern by language/framework:
+    - Python: `__init__.py` with `from .<step_file> import *  # noqa: F401,F403` for each step file
+    - TypeScript: `index.ts` with `export * from './<step_file>'` for each step file
+    - Java: Step files are discovered by Cucumber via classpath scanning — no init file needed;
+      generate a test that passes with a note
+    - Go: Package-level registration; generate a test that passes with a note
 
-  The architecture test should:
-  - For each given/, when/, then/ directory: find the init file and check it imports every
-    step file in that directory
-  - Collect all violations before failing
-  - Report: directory/__init__.py — missing import for step_name.py
-  - Fail with a summary
+    Before generating, examine the project context to determine:
+    - The primary language and BDD framework
+    - The actual step directory structure
+    - What the init file should look like for this framework (infer from existing __init__.py
+      files in step directories if present in the sample files)
 
-  Name the output file appropriately for the language.
-  Derive step directories from the project context provided.
-claude_md_section: |
-  ## Init Imports All Steps
+    Generate the architecture test in the same language as the project.
 
-  Each given/, when/, then/ directory needs an `__init__.py` (or `index.ts`) that
-  re-exports every step file:
+    The architecture test should:
+    - For each given/, when/, then/ directory: find the init file and check it imports every
+      step file in that directory
+    - Collect all violations before failing
+    - Report: directory/__init__.py — missing import for step_name.py
+    - Fail with a summary
 
-  ```python
-  # given/__init__.py
-  from .a_table_exists import *  # noqa: F401,F403
-  from .a_queue_exists import *  # noqa: F401,F403
-  ```
+    Name the output file appropriately for the language.
+    Derive step directories from the project context provided.
+  claude_md_section: |
+    ## Init Imports All Steps
 
-  This is how the BDD framework discovers steps through the conftest wildcard import.
-  If you add a new step file and forget to add it here, pytest-bdd will silently skip it.
+    Each given/, when/, then/ directory needs an `__init__.py` (or `index.ts`) that
+    re-exports every step file:
+
+    ```python
+    # given/__init__.py
+    from .a_table_exists import *  # noqa: F401,F403
+    from .a_queue_exists import *  # noqa: F401,F403
+    ```
+
+    This is how the BDD framework discovers steps through the conftest wildcard import.
+    If you add a new step file and forget to add it here, pytest-bdd will silently skip it.
+
+post_propose:
+  insert: before:Implementation
+  tasks:
+    - "Run `pytest tests/architecture/test_init_imports_all_steps.py -v` — must pass before\
+      \ implementation is complete"
+    - "Do not remove, skip, or modify the init-imports-all-steps architecture test without\
+      \ explicit user approval"

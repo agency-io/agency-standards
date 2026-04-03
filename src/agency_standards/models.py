@@ -3,16 +3,43 @@ from pathlib import Path
 
 
 @dataclass
+class PostInit:
+    output_file: str
+    prompt: str
+    claude_md_section: str
+
+
+@dataclass
+class PostPropose:
+    insert: str
+    tasks: list[str] = field(default_factory=list)
+
+
+@dataclass
+class PostApply:
+    insert: str
+    tasks: list[str] = field(default_factory=list)
+
+
+@dataclass
+class Condition:
+    languages: list[str] | None = None
+    project_type: list[str] | None = None
+    dependencies: list[str] | None = None
+    features: list[str] | None = None
+
+
+@dataclass
 class Standard:
     id: str
     name: str
     description: str
-    languages: list[str]
-    output_file: str
-    prompt: str
-    claude_md_section: str
     source: str = "builtin"  # builtin | local | custom
     tags: list[str] = field(default_factory=list)  # general | bdd | e2e
+    post_init: PostInit | None = None
+    post_propose: PostPropose | None = None
+    post_apply: PostApply | None = None
+    condition: Condition | None = None
 
 
 @dataclass
@@ -30,6 +57,7 @@ class ProjectContext:
     uses_bdd: bool = False
     feature_files: list[Path] = field(default_factory=list)
     step_dirs: list[Path] = field(default_factory=list)  # given/ when/ then/ dirs
+    uses_openspec: bool = False
 
     def summary(self) -> str:
         lines = [
@@ -51,7 +79,9 @@ class ProjectContext:
             lines.append(f"Feature files ({len(self.feature_files)}): "
                 + ", ".join(p.name for p in self.feature_files[:5]))
         if self.step_dirs:
-            lines.append(f"Step dirs: {[str(p.relative_to(self.root)) for p in self.step_dirs[:6]]}")
+            lines.append(
+                f"Step dirs: {[str(p.relative_to(self.root)) for p in self.step_dirs[:6]]}"
+            )
         if self.pyproject:
             deps = self.pyproject.get("project", {}).get("dependencies", [])
             lines.append(f"Dependencies: {deps[:10]}")

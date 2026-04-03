@@ -1,64 +1,76 @@
 id: aaa-comments
 name: AAA Comments
 description: Every unit and integration test method must have explicit Arrange / Act / Assert sections
-languages: [python, go, typescript, java]
 tags: [general]
-output_file: test_aaa_comments
-prompt: |
-  Generate an architecture test that enforces the AAA (Arrange / Act / Assert) pattern.
 
-  The rule: every test function or method in the project's unit and integration test files
-  must contain explicit Arrange, Act, and Assert sections. The Act section must contain
-  exactly one operation — the thing being tested. Empty sections still need the marker.
+condition:
+  languages: [python, go, typescript, java]
 
-  Before generating, examine the project context to determine:
-  - The primary language (Python, Go, TypeScript, Java, etc.)
-  - The test framework in use — infer from the build file (pyproject.toml, go.mod, package.json,
-    build.gradle, pom.xml) and from the sample test files
-  - The comment style for that language (# for Python, // for Go/TypeScript/Java)
-  - The test file naming pattern (test_*.py, *_test.go, *.test.ts, *Test.java, etc.)
-  - Whether the project uses BDD (Given/When/Then) — skip those files; AAA applies only to
-    unit/integration tests, not BDD step files
-  - The actual directory paths for unit and integration tests
+post_init:
+  output_file: test_aaa_comments
+  prompt: |
+    Generate an architecture test that enforces the AAA (Arrange / Act / Assert) pattern.
 
-  Generate the architecture test in the same language and using the same test framework
-  the project uses. Use static analysis appropriate for that language:
-  - Python: ast module
-  - Go: go/ast or string scanning
-  - TypeScript: string/regex scanning or ts-morph
-  - Java: string scanning or JavaParser
+    The rule: every test function or method in the project's unit and integration test files
+    must contain explicit Arrange, Act, and Assert sections. The Act section must contain
+    exactly one operation — the thing being tested. Empty sections still need the marker.
 
-  The architecture test should:
-  - Collect ALL violations across all test files before failing
-  - Report each as: filename:line_number — test_name — missing: [list of missing sections]
-  - Fail with a clear summary listing all violations
-  - Skip BDD step files
-  - Be robust to nested test classes or table-driven tests
+    Before generating, examine the project context to determine:
+    - The primary language (Python, Go, TypeScript, Java, etc.)
+    - The test framework in use — infer from the build file (pyproject.toml, go.mod, package.json,
+      build.gradle, pom.xml) and from the sample test files
+    - The comment style for that language (# for Python, // for Go/TypeScript/Java)
+    - The test file naming pattern (test_*.py, *_test.go, *.test.ts, *Test.java, etc.)
+    - Whether the project uses BDD (Given/When/Then) — skip those files; AAA applies only to
+      unit/integration tests, not BDD step files
+    - The actual directory paths for unit and integration tests
 
-  Name the output file appropriately for the language (e.g. test_aaa_comments.py, aaa_comments_test.go,
-  aaa-comments.test.ts, AaaCommentsTest.java).
-  Derive all directory paths from the project context provided.
-claude_md_section: |
-  ## AAA Pattern (Arrange / Act / Assert)
+    Generate the architecture test in the same language and using the same test framework
+    the project uses. Use static analysis appropriate for that language:
+    - Python: ast module
+    - Go: go/ast or string scanning
+    - TypeScript: string/regex scanning or ts-morph
+    - Java: string scanning or JavaParser
 
-  Every unit and integration test must have three explicit sections:
+    The architecture test should:
+    - Collect ALL violations across all test files before failing
+    - Report each as: filename:line_number — test_name — missing: [list of missing sections]
+    - Fail with a clear summary listing all violations
+    - Skip BDD step files
+    - Be robust to nested test classes or table-driven tests
 
-  ```python
-  # Python example
-  def test_something(self):
-      # Arrange
-      expected_value = "hello"
+    Name the output file appropriately for the language (e.g. test_aaa_comments.py, aaa_comments_test.go,
+    aaa-comments.test.ts, AaaCommentsTest.java).
+    Derive all directory paths from the project context provided.
+  claude_md_section: |
+    ## AAA Pattern (Arrange / Act / Assert)
 
-      # Act
-      actual_value = do_something()
+    Every unit and integration test must have three explicit sections:
 
-      # Assert
-      assert actual_value == expected_value, f"Expected {expected_value!r} but got {actual_value!r}"
-  ```
+    ```python
+    # Python example
+    def test_something(self):
+        # Arrange
+        expected_value = "hello"
 
-  Rules:
-  - Arrange, Act, Assert markers are mandatory in every test method
-  - Empty sections still need the marker
-  - Act contains exactly one operation
-  - Assert contains only assertions, no additional logic
-  - Does not apply to BDD step files (Given/When/Then)
+        # Act
+        actual_value = do_something()
+
+        # Assert
+        assert actual_value == expected_value, f"Expected {expected_value!r} but got {actual_value!r}"
+    ```
+
+    Rules:
+    - Arrange, Act, Assert markers are mandatory in every test method
+    - Empty sections still need the marker
+    - Act contains exactly one operation
+    - Assert contains only assertions, no additional logic
+    - Does not apply to BDD step files (Given/When/Then)
+
+post_propose:
+  insert: before:Implementation
+  tasks:
+    - "Run `pytest tests/architecture/test_aaa_comments.py -v` — must pass before implementation\
+      \ is complete"
+    - "Do not remove, skip, or modify the AAA comments architecture test without explicit user\
+      \ approval"

@@ -1,53 +1,65 @@
 id: no-skipped-tests
 name: No Skipped Tests
 description: Tests must never be skipped — no skip/xfail/disabled markers in test files
-languages: [python, go, typescript, java]
-output_file: test_no_skipped_tests
 tags: [general]
-prompt: |
-  Generate an architecture test that forbids skipped or disabled tests in test files.
 
-  The rule: no test may be permanently or temporarily skipped. Skipped tests erode confidence
-  in the suite over time and often represent deferred problems. If a test requires
-  infrastructure or state that is difficult to arrange, solve the infrastructure problem
-  instead of skipping.
+condition:
+  languages: [python, go, typescript, java]
 
-  The skip constructs to detect vary by language and framework:
-  - Python pytest: `@pytest.mark.skip`, `@pytest.mark.skipif`, `pytest.skip()`, `@pytest.mark.xfail`
-  - Python unittest: `@unittest.skip`, `@unittest.skipIf`, `@unittest.skipUnless`
-  - TypeScript Jest/Vitest: `xit(`, `xdescribe(`, `test.skip(`, `it.skip(`, `describe.skip(`
-  - Go: `t.Skip(`, `godog.ErrSkip` (in BDD step definitions)
-  - Java JUnit 5: `@Disabled`
-  - Java JUnit 4: `@Ignore`
+post_init:
+  output_file: test_no_skipped_tests
+  prompt: |
+    Generate an architecture test that forbids skipped or disabled tests in test files.
 
-  Before generating, examine the project context to determine:
-  - The primary language
-  - The test framework(s) in use — infer from build file and sample test files
-  - The test file naming patterns and directories to scan
-  - Any legitimate exception patterns used in this project (e.g. a custom @internal marker
-    that is explicitly documented as the only allowed exclusion)
+    The rule: no test may be permanently or temporarily skipped. Skipped tests erode confidence
+    in the suite over time and often represent deferred problems. If a test requires
+    infrastructure or state that is difficult to arrange, solve the infrastructure problem
+    instead of skipping.
 
-  Generate the architecture test in the same language as the project.
-  Use string/regex scanning rather than AST where simpler (skip constructs are easy to detect
-  via text patterns).
+    The skip constructs to detect vary by language and framework:
+    - Python pytest: `@pytest.mark.skip`, `@pytest.mark.skipif`, `pytest.skip()`, `@pytest.mark.xfail`
+    - Python unittest: `@unittest.skip`, `@unittest.skipIf`, `@unittest.skipUnless`
+    - TypeScript Jest/Vitest: `xit(`, `xdescribe(`, `test.skip(`, `it.skip(`, `describe.skip(`
+    - Go: `t.Skip(`, `godog.ErrSkip` (in BDD step definitions)
+    - Java JUnit 5: `@Disabled`
+    - Java JUnit 4: `@Ignore`
 
-  The architecture test should:
-  - Scan all test directories (unit, integration — not e2e feature files, those are covered separately)
-  - Collect all violations before failing
-  - Report: filename:line_number — skip construct found
-  - Fail with a summary
+    Before generating, examine the project context to determine:
+    - The primary language
+    - The test framework(s) in use — infer from build file and sample test files
+    - The test file naming patterns and directories to scan
+    - Any legitimate exception patterns used in this project (e.g. a custom @internal marker
+      that is explicitly documented as the only allowed exclusion)
 
-  Name the output file appropriately for the language.
-  Derive test directories from the project context provided.
-claude_md_section: |
-  ## No Skipped Tests
+    Generate the architecture test in the same language as the project.
+    Use string/regex scanning rather than AST where simpler (skip constructs are easy to detect
+    via text patterns).
 
-  Tests must never be skipped. Do not use:
-  - Python: `@pytest.mark.skip`, `@pytest.mark.xfail`, `pytest.skip()`
-  - TypeScript: `xit`, `xdescribe`, `test.skip`, `it.skip`
-  - Java: `@Disabled`, `@Ignore`
-  - Go: `t.Skip`, `godog.ErrSkip`
+    The architecture test should:
+    - Scan all test directories (unit, integration — not e2e feature files, those are covered separately)
+    - Collect all violations before failing
+    - Report: filename:line_number — skip construct found
+    - Fail with a summary
 
-  If a test requires infrastructure that is hard to set up, solve the infrastructure
-  problem. If a scenario requires internal system state unreachable via the public API,
-  use the `@internal` tag in the feature file — that is the only permitted exclusion.
+    Name the output file appropriately for the language.
+    Derive test directories from the project context provided.
+  claude_md_section: |
+    ## No Skipped Tests
+
+    Tests must never be skipped. Do not use:
+    - Python: `@pytest.mark.skip`, `@pytest.mark.xfail`, `pytest.skip()`
+    - TypeScript: `xit`, `xdescribe`, `test.skip`, `it.skip`
+    - Java: `@Disabled`, `@Ignore`
+    - Go: `t.Skip`, `godog.ErrSkip`
+
+    If a test requires infrastructure that is hard to set up, solve the infrastructure
+    problem. If a scenario requires internal system state unreachable via the public API,
+    use the `@internal` tag in the feature file — that is the only permitted exclusion.
+
+post_propose:
+  insert: before:Implementation
+  tasks:
+    - "Run `pytest tests/architecture/test_no_skipped_tests.py -v` — must pass before\
+      \ implementation is complete"
+    - "Do not remove, skip, or modify the no-skipped-tests architecture test without explicit\
+      \ user approval"
