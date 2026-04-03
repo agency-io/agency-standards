@@ -5,25 +5,39 @@ import yaml
 from ..models import Condition, InitPhase, ProjectContext, Standard, TaskPhase
 
 BUILTIN_DIR = Path(__file__).parent.parent / "builtin_standards"
-USER_DIR = Path.home() / ".agency-standards" / "standards"
+PROJECT_STANDARDS_SUBDIR = "standards"
 
 
 def load_builtin() -> list[Standard]:
     return _load_from_dir(BUILTIN_DIR, source="builtin")
 
 
-def load_user() -> list[Standard]:
-    if not USER_DIR.exists():
+def load_project(root: Path) -> list[Standard]:
+    """Load standards from the project's standards/ directory."""
+    project_dir = root / PROJECT_STANDARDS_SUBDIR
+    if not project_dir.exists():
         return []
-    return _load_from_dir(USER_DIR, source="local")
+    return _load_from_dir(project_dir, source="project")
 
 
-def load_all() -> list[Standard]:
-    return load_builtin() + load_user()
+def load_all(root: Path | None = None) -> list[Standard]:
+    """Return active standards. Project standards take precedence over builtins when present."""
+    if root is not None:
+        project = load_project(root)
+        if project:
+            # Merge: project standards override builtins with the same ID; remaining builtins
+            # are included only when no standards/ dir existed (checked above).
+            return project
+    return load_builtin()
 
 
-def load_by_id(standard_id: str) -> Standard | None:
-    for standard in load_all():
+def load_catalog() -> list[Standard]:
+    """Return all builtin standards — used for list/post-init browsing regardless of project."""
+    return load_builtin()
+
+
+def load_by_id(standard_id: str, root: Path | None = None) -> Standard | None:
+    for standard in load_all(root):
         if standard.id == standard_id:
             return standard
     return None

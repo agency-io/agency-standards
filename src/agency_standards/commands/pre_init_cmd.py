@@ -6,10 +6,11 @@ from rich.console import Console
 
 from ..config import load_config
 from ..inspector import inspect
-from ..standards.loader import evaluate_condition, load_all
+from ..standards.loader import BUILTIN_DIR, evaluate_condition, load_catalog, load_project
 
 SKILLS_SOURCE = Path(__file__).parent.parent / "skills"
 SKILLS_DEST_SUBDIR = ".claude/commands/agency-standards"
+PROJECT_STANDARDS_SUBDIR = "standards"
 
 console = Console()
 
@@ -19,21 +20,19 @@ def run(target: Path, yes: bool = False) -> None:
     console.print(f"[dim]Inspected project: {target}[/dim]")
     console.print(f"[dim]Languages: {', '.join(ctx.languages) or 'unknown'}[/dim]")
 
-    applicable = [
-        s for s in load_all()
-        if evaluate_condition(s, ctx) and s.pre_init is not None
-    ]
+    catalog = [s for s in load_catalog() if evaluate_condition(s, ctx) and s.pre_init is not None]
 
-    if not applicable:
+    if not catalog:
         console.print("[yellow]No applicable standards with pre_init blocks found.[/yellow]")
         return
 
-    selected = _select_standards(applicable, target, yes)
+    selected = _select_standards(catalog, target, yes)
 
     if not selected:
         console.print("[yellow]No standards selected; CLAUDE.md not updated.[/yellow]")
         return
 
+    _copy_standards(target, selected)
     _write_claude_md(target, selected)
     _install_skills(target)
 
@@ -43,28 +42,44 @@ def run(target: Path, yes: bool = False) -> None:
     )
 
 
-def _select_standards(applicable: list, target: Path, yes: bool) -> list:
+def _select_standards(catalog: list, target: Path, yes: bool) -> list:
     if yes:
-        console.print(f"[dim]--yes flag: applying all {len(applicable)} applicable standards[/dim]")
-        return applicable
+        console.print(f"[dim]--yes flag: applying all {len(catalog)} applicable standards[/dim]")
+        return catalog
 
     enabled_ids = set(load_config(target))
+    adopted_ids = {s.id for s in load_project(target)}
 
     choices = [
         questionary.Choice(
             title=f"{s.id}  [{', '.join(s.tags)}]  — {s.description}",
             value=s,
-            checked=(s.id in enabled_ids) if enabled_ids else True,
+            checked=(s.id in adopted_ids or s.id in enabled_ids)
+            if (adopted_ids or enabled_ids) else True,
         )
-        for s in applicable
+        for s in catalog
     ]
 
     selected = questionary.checkbox(
-        f"Select standards to enable ({len(applicable)} applicable):",
+        f"Select standards to enable ({len(catalog)} applicable):",
         choices=choices,
     ).ask()
 
     return selected if selected is not None else []
+
+
+def _copy_standards(target: Path, selected: list) -> None:
+    standards_dir = target / PROJECT_STANDARDS_SUBDIR
+    standards_dir.mkdir(exist_ok=True)
+
+    for standard in selected:
+        dest = standards_dir / f"{standard.id}.yaml"
+        src = BUILTIN_DIR / f"{standard.id}.yaml"
+        if dest.exists():
+            console.print(f"  [dim]{standard.id} already adopted — skipping copy[/dim]")
+        elif src.exists():
+            shutil.copy2(src, dest)
+            console.print(f"  Adopted [cyan]standards/{standard.id}.yaml[/cyan]")
 
 
 def _write_claude_md(target: Path, applicable: list) -> None:
