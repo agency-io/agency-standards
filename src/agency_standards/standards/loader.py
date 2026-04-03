@@ -59,6 +59,8 @@ def evaluate_condition(standard: Standard, ctx: ProjectContext) -> bool:
 def _check_languages(cond: Condition, ctx: ProjectContext) -> bool:
     if cond.languages is None:
         return True
+    if not ctx.languages:  # language unknown — don't filter out
+        return True
     return bool(set(cond.languages) & set(ctx.languages))
 
 
@@ -81,6 +83,9 @@ def _check_dependencies(cond: Condition, ctx: ProjectContext) -> bool:
 
 def _check_features(cond: Condition, ctx: ProjectContext) -> bool:
     if cond.features is None:
+        return True
+    # Only filter on features when language is known — avoids hiding standards from new projects
+    if not ctx.languages:
         return True
     for feature in cond.features:
         if feature == "bdd" and not ctx.uses_bdd:
