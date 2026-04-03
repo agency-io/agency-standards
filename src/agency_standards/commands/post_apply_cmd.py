@@ -1,9 +1,7 @@
 from pathlib import Path
 
-from rich.console import Console
-
-console = Console()
+from ._task_injection import run_task_injection
 
 
 def run(change_id: str, target: Path) -> None:
-    console.print("post-apply: not yet implemented")
+    run_task_injection("post-apply", "post_apply", change_id, target)

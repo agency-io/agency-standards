@@ -3,22 +3,32 @@ from pathlib import Path
 
 
 @dataclass
-class PostInit:
+class InitPhase:
+    """Phase block for pre_init / post_init — writes CLAUDE.md, installs skills."""
     output_file: str
     prompt: str
     claude_md_section: str
 
 
+# Backward-compat aliases
+PostInit = InitPhase
+PreInit = InitPhase
+
+
 @dataclass
-class PostPropose:
+class TaskPhase:
+    """Phase block for all propose/apply/archive phases — injects tasks into tasks.md."""
     insert: str
     tasks: list[str] = field(default_factory=list)
 
 
-@dataclass
-class PostApply:
-    insert: str
-    tasks: list[str] = field(default_factory=list)
+# Named aliases so YAML keys map to clear attributes
+PrePropose = TaskPhase
+PostPropose = TaskPhase
+PreApply = TaskPhase
+PostApply = TaskPhase
+PreArchive = TaskPhase
+PostArchive = TaskPhase
 
 
 @dataclass
@@ -36,9 +46,14 @@ class Standard:
     description: str
     source: str = "builtin"  # builtin | local | custom
     tags: list[str] = field(default_factory=list)  # general | bdd | e2e
-    post_init: PostInit | None = None
-    post_propose: PostPropose | None = None
-    post_apply: PostApply | None = None
+    pre_init: InitPhase | None = None
+    post_init: InitPhase | None = None
+    pre_propose: TaskPhase | None = None
+    post_propose: TaskPhase | None = None
+    pre_apply: TaskPhase | None = None
+    post_apply: TaskPhase | None = None
+    pre_archive: TaskPhase | None = None
+    post_archive: TaskPhase | None = None
     condition: Condition | None = None
 
 

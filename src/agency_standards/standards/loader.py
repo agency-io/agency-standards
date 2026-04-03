@@ -2,7 +2,7 @@ from pathlib import Path
 
 import yaml
 
-from ..models import Condition, PostApply, PostInit, PostPropose, ProjectContext, Standard
+from ..models import Condition, InitPhase, ProjectContext, Standard, TaskPhase
 
 BUILTIN_DIR = Path(__file__).parent.parent / "builtin_standards"
 USER_DIR = Path.home() / ".agency-standards" / "standards"
@@ -76,42 +76,24 @@ def _check_features(cond: Condition, ctx: ProjectContext) -> bool:
     return True
 
 
+def _parse_init_phase(raw: dict) -> InitPhase:
+    return InitPhase(
+        output_file=raw.get("output_file", ""),
+        prompt=raw.get("prompt", ""),
+        claude_md_section=raw.get("claude_md_section", ""),
+    )
+
+
+def _parse_task_phase(raw: dict) -> TaskPhase:
+    return TaskPhase(
+        insert=raw.get("insert", "append"),
+        tasks=raw.get("tasks", []),
+    )
+
+
 def _parse_standard(data: dict, source: str) -> Standard:
     """Parse a standard from YAML data supporting both old flat and new nested formats."""
-    post_init: PostInit | None = None
-    post_propose: PostPropose | None = None
-    post_apply: PostApply | None = None
     condition: Condition | None = None
-
-    # New nested format
-    if "post_init" in data:
-        pi = data["post_init"]
-        post_init = PostInit(
-            output_file=pi.get("output_file", ""),
-            prompt=pi.get("prompt", ""),
-            claude_md_section=pi.get("claude_md_section", ""),
-        )
-    elif "output_file" in data or "prompt" in data:
-        # Backward-compat: flat format
-        post_init = PostInit(
-            output_file=data.get("output_file", ""),
-            prompt=data.get("prompt", ""),
-            claude_md_section=data.get("claude_md_section", ""),
-        )
-
-    if "post_propose" in data:
-        pp = data["post_propose"]
-        post_propose = PostPropose(
-            insert=pp.get("insert", "append"),
-            tasks=pp.get("tasks", []),
-        )
-
-    if "post_apply" in data:
-        pa = data["post_apply"]
-        post_apply = PostApply(
-            insert=pa.get("insert", "append"),
-            tasks=pa.get("tasks", []),
-        )
 
     if "condition" in data:
         c = data["condition"]
@@ -122,15 +104,38 @@ def _parse_standard(data: dict, source: str) -> Standard:
             features=c.get("features"),
         )
 
+    # Init phases
+    pre_init = _parse_init_phase(data["pre_init"]) if "pre_init" in data else None
+    if "post_init" in data:
+        post_init = _parse_init_phase(data["post_init"])
+    elif "output_file" in data or "prompt" in data:
+        # Backward-compat: flat format
+        post_init: InitPhase | None = _parse_init_phase(data)
+    else:
+        post_init = None
+
+    # Task-injection phases
+    pre_propose = _parse_task_phase(data["pre_propose"]) if "pre_propose" in data else None
+    post_propose = _parse_task_phase(data["post_propose"]) if "post_propose" in data else None
+    pre_apply = _parse_task_phase(data["pre_apply"]) if "pre_apply" in data else None
+    post_apply = _parse_task_phase(data["post_apply"]) if "post_apply" in data else None
+    pre_archive = _parse_task_phase(data["pre_archive"]) if "pre_archive" in data else None
+    post_archive = _parse_task_phase(data["post_archive"]) if "post_archive" in data else None
+
     return Standard(
         id=data["id"],
         name=data["name"],
         description=data["description"],
         source=source,
         tags=data.get("tags", ["general"]),
+        pre_init=pre_init,
         post_init=post_init,
+        pre_propose=pre_propose,
         post_propose=post_propose,
+        pre_apply=pre_apply,
         post_apply=post_apply,
+        pre_archive=pre_archive,
+        post_archive=post_archive,
         condition=condition,
     )
 
