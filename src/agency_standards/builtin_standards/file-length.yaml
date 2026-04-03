@@ -1,40 +1,75 @@
 id: file-length
 name: File Length
 description: Source files must not exceed 500 lines — long files indicate a class or module is doing too much
-languages: [python, go, typescript, java]
-output_file: test_file_length
 tags: [general]
-prompt: |
-  Generate an architecture test that enforces a maximum source file length of 500 lines.
 
-  The rule: every file in the source directories must contain 500 lines or fewer (counting
-  all lines including blanks and comments). Files that exceed this are a signal that the
-  module is doing too much and should be split into focused, single-responsibility units.
+condition:
+  languages: [python, go, typescript, java]
 
-  Before generating, examine the project context to determine:
-  - The primary language
-  - The test framework in use
-  - The actual source directories to scan (src/, app/, lib/, cmd/, etc.)
-  - File extensions to include for that language (.py, .go, .ts, .java, etc.)
-  - Files or directories to exclude (generated files, vendored code, migration files,
-    __init__.py files that are just re-exports, .d.ts declaration files, etc.)
+post_init:
+  output_file: test_file_length
+  prompt: |
+    Generate an architecture test that enforces a maximum source file length of 500 lines.
 
-  Generate the architecture test in the same language as the project.
-  Count lines using appropriate file reading for the language.
+    The rule: every file in the source directories must contain 500 lines or fewer (counting
+    all lines including blanks and comments). Files that exceed this are a signal that the
+    module is doing too much and should be split into focused, single-responsibility units.
 
-  The architecture test should:
-  - Scan source directories only, not test directories
-  - Collect all violations before failing
-  - Report: filename — N lines (limit: 500)
-  - Fail with a summary of all violations
+    Before generating, examine the project context to determine:
+    - The primary language
+    - The test framework in use
+    - The actual source directories to scan (src/, app/, lib/, cmd/, etc.)
+    - File extensions to include for that language (.py, .go, .ts, .java, etc.)
+    - Files or directories to exclude (generated files, vendored code, migration files,
+      __init__.py files that are just re-exports, .d.ts declaration files, etc.)
 
-  Name the output file appropriately for the language.
-  Derive source directories from the project context provided.
-claude_md_section: |
-  ## File Length
+    Generate the architecture test in the same language as the project.
+    Count lines using appropriate file reading for the language.
 
-  Source files must not exceed 500 lines. A file that is growing beyond this is a signal
-  to split it into smaller, focused modules.
+    The architecture test should:
+    - Scan source directories only, not test directories
+    - Collect all violations before failing
+    - Report: filename — N lines (limit: 500)
+    - Fail with a summary of all violations
 
-  Count includes blank lines and comments. Generated files, vendored code, and
-  single-purpose re-export files are exempt.
+    Name the output file appropriately for the language.
+    Derive source directories from the project context provided.
+  claude_md_section: |
+    ## File Length
+
+    Source files must not exceed 500 lines (including blank lines and comments).
+
+    ### Why
+
+    File length is a proxy for complexity. A 600-line file almost always contains more than
+    one cohesive responsibility. Keeping files short forces decisions about where things belong,
+    makes code reviews easier to scope, and reduces the chance that two unrelated changes
+    conflict in the same file.
+
+    ### How to split a long file
+
+    | Situation | Solution |
+    |---|---|
+    | Multiple public classes | One class per file (see one-class-per-file standard) |
+    | Large class with many methods | Extract cohesive groups of methods into collaborator classes |
+    | Many helper functions | Move to a focused `<concern>_helpers.py` or `utils/<concern>.py` |
+    | Long test file | Split by scenario — one operation or condition per file |
+
+    ### Exemptions
+
+    The following are not counted toward the limit:
+    - **Generated files** — migrations, protobuf output, auto-generated clients
+    - **Vendored code** — third-party code copied into the repo
+    - **Re-export files** — `__init__.py` or `index.ts` files whose sole purpose is to
+      re-export symbols from other modules
+    - **Type declaration files** — `.d.ts` files in TypeScript projects
+
+    If you are unsure whether a file qualifies, apply the limit.
+
+post_propose:
+  insert: before:Implementation
+  tasks:
+    - "Run `pytest tests/architecture/test_file_length.py -v` — must pass before implementation\
+      \ is complete"
+    - "Do not remove, skip, or modify the file length architecture test without explicit user\
+      \ approval"

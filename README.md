@@ -1,10 +1,8 @@
 # agency-standards
 
-AI-powered architecture governance for Python projects. Automatically generates and maintains architecture tests that enforce coding standards and structural conventions.
-
-## Overview
-
-`agency-standards` inspects your project, applies a set of standards, and uses Claude AI to generate pytest-based architecture tests tailored to your codebase. It also maintains a `CLAUDE.md` file so AI assistants understand your project's conventions.
+OpenSpec lifecycle companion for architecture governance. Injects coding standards into your
+OpenSpec workflow — writing `CLAUDE.md`, installing Claude Code skills, and augmenting proposal
+task lists so implementing agents cannot accidentally remove or bypass architecture tests.
 
 ## Installation
 
@@ -12,60 +10,86 @@ AI-powered architecture governance for Python projects. Automatically generates 
 uv tool install agency-standards
 ```
 
+## How it works
+
+`agency-standards` complements the [OpenSpec](https://github.com/agency-io/openspec) workflow.
+Run it after each OpenSpec command:
+
+```
+openspec init      →  agency-standards post-init
+openspec propose   →  agency-standards post-propose <change-id>
+openspec apply     →  (agent follows the augmented tasks.md)
+openspec archive   →  agency-standards post-archive <change-id>
+```
+
 ## Quick Start
 
 ```bash
-# Inspect your project and generate initial architecture tests
-agency-standards init
+# Browse all available standards
+agency-standards list
+agency-standards list --filter bdd      # filter by tag
+agency-standards list --verbose         # show full documentation
 
-# List available standards
-agency-standards standards list
+# After openspec init — interactively select standards, write CLAUDE.md, install skills
+agency-standards post-init              # interactive checkbox selection
+agency-standards post-init --yes        # accept all applicable standards (CI-friendly)
 
-# Add a specific standard
-agency-standards add no-bare-except
+# Then open the project in Claude Code and run the generate skill:
+# /agency-standards:generate
 
-# Add a custom standard described in plain English
-agency-standards add --describe "Every public function must have a docstring"
+# After creating a proposal — inject standard tasks into tasks.md
+agency-standards post-propose my-change-id
 
-# Regenerate tests after standards change (preserves custom sections)
-agency-standards update
-
-# Check which generated files are out of date
-agency-standards status
+# Shorthand for post-propose (default command)
+agency-standards my-change-id
 ```
 
 ## Commands
 
 | Command | Description |
 |---|---|
-| `init [TARGET]` | Wizard to inspect a project and generate initial architecture tests + `CLAUDE.md` |
-| `update [TARGET]` | Regenerate managed test files, preserving custom sections |
-| `status [TARGET]` | Show which generated files are current vs out of date |
-| `add [STANDARD_ID]` | Add a standard to the project |
-| `standards list` | List all available standards |
+| `list [--filter TAG] [--verbose]` | List all available standards. Pass `--filter bdd` to narrow by tag; `--verbose` to show full docs. |
+| `post-init [--yes] [TARGET]` | Interactively select standards, write `CLAUDE.md`, install skills. `--yes` skips the prompt. Run after `openspec init`. |
+| `post-propose <CHANGE-ID> [TARGET]` | Inject standard tasks into the change's `tasks.md` via Claude. Run after `openspec propose`. |
+| `post-apply <CHANGE-ID> [TARGET]` | *(Not yet implemented)* Run after `openspec apply`. |
+| `post-archive <CHANGE-ID> [TARGET]` | *(Not yet implemented)* Run after `openspec archive`. |
 
-### `init` options
+### `.agency-standards.yaml`
 
-| Flag | Description |
-|---|---|
-| `--yes, -y` | Accept all defaults, skip prompts |
+`post-init` persists the selected standards to `.agency-standards.yaml` at the project root:
 
-### `update` options
+```yaml
+standards:
+  enabled:
+    - aaa-comments
+    - file-naming
+    - one-step-per-file
+```
 
-| Flag | Description |
-|---|---|
-| `--standard, -s` | Update a single standard by ID |
+Commit this file — it records which standards your team has adopted. On subsequent `post-init`
+runs, previously-selected standards are pre-checked and new ones are unchecked (so new standards
+are opt-in).
 
-### `add` options
+## What `post-propose` does
 
-| Flag | Description |
-|---|---|
-| `--target, -t` | Project directory (default: current) |
-| `--describe, -d` | Describe a custom standard in plain English |
+After you create a proposal with `openspec propose`, run `agency-standards post-propose <change-id>`.
+It reads your `proposal.md` and `tasks.md`, identifies which standards apply to this project,
+and calls Claude to rewrite `tasks.md` with injected tasks such as:
 
-## Builtin Standards
+- Run `pytest tests/architecture/test_aaa_comments.py -v` — must pass before implementation is complete
+- Do not remove, skip, or modify the AAA comments architecture test without explicit user approval
 
-### General
+This ensures the implementing agent sees these constraints as part of its own task list and cannot
+skip or remove them without explicit user instruction.
+
+## Standards
+
+Each standard declares which lifecycle phases it participates in, a condition that controls
+whether it applies to a given project, and phase-specific behaviour.
+
+### Builtin Standards
+
+#### General
 
 | ID | Description |
 |---|---|
@@ -79,7 +103,7 @@ agency-standards status
 | `one-test-class-per-file` | Each test file should contain at most one test class |
 | `no-skipped-tests` | Tests must never use skip/xfail/disabled markers |
 
-### BDD / E2E
+#### BDD / E2E
 
 | ID | Description |
 |---|---|
@@ -95,38 +119,53 @@ agency-standards status
 | `step-decorator-matches-directory` | `@given` decorators must live in `given/`, `@when` in `when/`, `@then` in `then/` |
 | `step-file-name-matches-function` | Step file names must match the step function they define |
 
-## Generated Files
+### Custom Standards
 
-Architecture tests are written to `tests/architecture/`. Each file includes a custom section marker:
-
-```python
-# --- CUSTOM (preserved on update) ---
-```
-
-Any code you add after this marker is preserved when you run `agency-standards update`.
-
-## Custom Standards
-
-You can define your own standards in `~/.agency-standards/standards/` using the same YAML format as the builtins:
+Define your own standards in `~/.agency-standards/standards/` using the new YAML schema:
 
 ```yaml
 id: my-standard
 name: My Standard
 description: One-line description
-languages: [python]
-tags: [general]
-output_file: test_my_standard
-prompt: |
-  Detailed instructions for Claude to generate the test...
-claude_md_section: |
-  ## My Standard
-  Explanation for developers and AI assistants...
+
+condition:
+  languages: [python]           # optional — omit to apply to all projects
+  # project_type: [api, cli]   # optional
+  # dependencies: [pydantic]   # optional — checks pyproject.toml
+
+post_init:
+  output_file: test_my_standard
+  prompt: |
+    Generate a pytest architecture test that enforces the following rule:
+    ...
+  claude_md_section: |
+    ## My Standard
+    Explanation for developers and AI assistants...
+
+post_propose:
+  insert: before:Implementation   # prepend | append | before:<Section> | after:<Section>
+  tasks:
+    - "Run `pytest tests/architecture/test_my_standard.py -v` — must pass before implementation is complete"
+    - "Do not remove or disable the my-standard architecture test without explicit user approval"
 ```
+
+**Condition keys** (all optional, AND-ed together):
+- `languages` — project must use at least one of these languages
+- `project_type` — `api`, `cli`, or `library`
+- `dependencies` — all listed packages must be present in the project's dependencies
+- `features` — detected features, e.g. `bdd`
+
+**Insert positions** for `post_propose`:
+- `prepend` — before all existing tasks
+- `append` — after all existing tasks
+- `before:<Section Name>` — before the named section heading
+- `after:<Section Name>` — after the last item in the named section
 
 ## Requirements
 
-- Python 3.10+
-- An Anthropic API key (`ANTHROPIC_API_KEY` environment variable)
+- Python 3.11+
+- An Anthropic API key (`ANTHROPIC_API_KEY` environment variable) — used by `post-propose`
+- [OpenSpec](https://github.com/agency-io/openspec) — the workflow this tool complements
 
 ## License
 

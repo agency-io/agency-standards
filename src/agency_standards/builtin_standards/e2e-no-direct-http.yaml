@@ -1,46 +1,95 @@
 id: e2e-no-direct-http
 name: E2E Steps Use CLI or SDK, Not Direct HTTP
 description: E2E step definitions must not import or use raw HTTP clients — use the CLI runner or SDK instead
-languages: [python, go, typescript, java]
-output_file: test_e2e_no_direct_http
 tags: [bdd, e2e]
-prompt: |
-  Generate an architecture test that forbids direct HTTP client imports in E2E step definition files.
 
-  The rule: E2E step definitions must interact with the system under test through the CLI runner
-  or the official SDK client — not by making raw HTTP requests. Using raw HTTP in E2E tests
-  couples the test to internal implementation details and bypasses the interface being tested.
+condition:
+  languages: [python, go, typescript, java]
+  features: [bdd]
 
-  HTTP client libraries to detect (adapt to the project's language):
-  - Python: `import httpx`, `import requests`, `import urllib.request`, `from httpx import`,
-    `from requests import`
-  - TypeScript/JavaScript: `import axios`, `import fetch`, `require('node-fetch')`,
-    `require('axios')`, raw `http.request`
-  - Go: `net/http` imports in step definition files (not in client helpers)
-  - Java: `HttpClient`, `OkHttpClient`, `RestTemplate` in step definition files
+post_init:
+  output_file: test_e2e_no_direct_http
+  prompt: |
+    Generate an architecture test that forbids direct HTTP client imports in E2E step definition files.
 
-  Before generating, examine the project context to determine:
-  - The primary language and BDD framework
-  - Where step definition files are located (given/, when/, then/ directories)
-  - The approved interaction method for this project (lws CLI invocation, boto3, SDK client, etc.)
-  - Any legitimate exceptions (e.g. a dedicated client.py/TestClient that wraps HTTP — that
-    file is allowed; the rule applies to step files in given/when/then, not client helpers)
+    The rule: E2E step definitions must interact with the system under test through the CLI runner
+    or the official SDK client — not by making raw HTTP requests. Using raw HTTP in E2E tests
+    couples the test to internal implementation details and bypasses the interface being tested.
 
-  Generate the architecture test in the same language as the project.
+    HTTP client libraries to detect (adapt to the project's language):
+    - Python: `import httpx`, `import requests`, `import urllib.request`, `from httpx import`,
+      `from requests import`
+    - TypeScript/JavaScript: `import axios`, `import fetch`, `require('node-fetch')`,
+      `require('axios')`, raw `http.request`
+    - Go: `net/http` imports in step definition files (not in client helpers)
+    - Java: `HttpClient`, `OkHttpClient`, `RestTemplate` in step definition files
 
-  The architecture test should:
-  - Scan step definition files only (given/, when/, then/ dirs) — NOT client.py or helper files
-  - Collect all violations before failing
-  - Report: filename — direct HTTP import found
-  - Fail with a summary
+    Before generating, examine the project context to determine:
+    - The primary language and BDD framework
+    - Where step definition files are located (given/, when/, then/ directories)
+    - The approved interaction method for this project (lws CLI invocation, boto3, SDK client, etc.)
+    - Any legitimate exceptions (e.g. a dedicated client.py/TestClient that wraps HTTP — that
+      file is allowed; the rule applies to step files in given/when/then, not client helpers)
 
-  Name the output file appropriately for the language.
-  Derive step directories from the project context provided.
-claude_md_section: |
-  ## E2E Steps Use CLI or SDK, Not Direct HTTP
+    Generate the architecture test in the same language as the project.
 
-  E2E step definitions must not import raw HTTP client libraries (httpx, requests, axios,
-  net/http, HttpClient, etc.). Instead:
-  - Use the CLI runner (e.g. `lws_invoke`, `assert_invoke`) for Given/When/Then steps
-  - Use the official SDK client via the TestClient helper
-  - Raw HTTP belongs in the TestClient (client.py), not in step files
+    The architecture test should:
+    - Scan step definition files only (given/, when/, then/ dirs) — NOT client.py or helper files
+    - Collect all violations before failing
+    - Report: filename — direct HTTP import found
+    - Fail with a summary
+
+    Name the output file appropriately for the language.
+    Derive step directories from the project context provided.
+  claude_md_section: |
+    ## E2E Steps Use CLI or SDK, Not Direct HTTP
+
+    Step definition files (in `given/`, `when/`, `then/`) must not import or use raw HTTP
+    client libraries. All system interaction goes through the CLI runner or the TestClient.
+
+    ### Why
+
+    Step files describe *what* the system should do, not *how* it communicates internally.
+    Importing `requests` or `httpx` directly in a step file couples the test to the transport
+    layer, bypasses the interface being tested, and duplicates logic that belongs in `client.py`.
+    It also makes tests harder to update when the transport changes.
+
+    ### Bad — raw HTTP in a step file
+
+    ```python
+    # given/a_table_exists.py — BAD
+    import httpx
+
+    @given("a table exists")
+    def a_table_exists(lws_session):
+        httpx.post("http://localhost:8080/tables", json={"name": "e2e-test"})
+    ```
+
+    ### Good — interaction through the TestClient
+
+    ```python
+    # given/a_table_exists.py — GOOD
+    @given("a table exists")
+    def a_table_exists(lws_session):
+        lws_session.dynamodb.create_table("e2e-create-table")
+    ```
+
+    ### Where raw HTTP is allowed
+
+    `client.py` (the TestClient class) is the **only** place raw HTTP clients may be used.
+    That class exists precisely to encapsulate transport details away from step files.
+
+    ### Libraries that trigger a violation
+
+    Python: `httpx`, `requests`, `urllib.request`, `aiohttp`
+    TypeScript: `axios`, `node-fetch`, `got`, raw `http`/`https` modules
+    Go: `net/http` in step files (not in client helpers)
+    Java: `HttpClient`, `OkHttpClient`, `RestTemplate` in step files
+
+post_propose:
+  insert: before:Implementation
+  tasks:
+    - "Run `pytest tests/architecture/test_e2e_no_direct_http.py -v` — must pass before\
+      \ implementation is complete"
+    - "Do not remove, skip, or modify the e2e-no-direct-http architecture test without\
+      \ explicit user approval"

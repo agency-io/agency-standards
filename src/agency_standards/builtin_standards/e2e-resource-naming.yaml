@@ -1,48 +1,91 @@
 id: e2e-resource-naming
 name: E2E Resource Naming
 description: E2E test resources must use a consistent prefix to avoid collisions between test runs
-languages: [python, go, typescript, java]
-output_file: test_e2e_resource_naming
 tags: [bdd, e2e]
-prompt: |
-  Generate an architecture test that enforces consistent resource name prefixes in E2E tests.
 
-  The rule: resource names used in E2E tests must use a consistent prefix so they:
-  1. Are clearly identifiable as test resources
-  2. Do not collide with each other or with real resources
-  3. Can be cleaned up reliably
+condition:
+  languages: [python, go, typescript, java]
+  features: [bdd]
 
-  The naming convention depends on the language/framework:
-  - Python/Go: `e2e-<operation>` for resource names (e.g. `e2e-create-table`) or `/e2e/<operation>`
-    for path-style names (e.g. SSM parameter `/e2e/put-param-test`)
-  - TypeScript: `test-<service>-<n>` (e.g. `test-dynamodb-1`)
-  - Java: `test-<service>-<n>` or `e2e-<operation>`
+post_init:
+  output_file: test_e2e_resource_naming
+  prompt: |
+    Generate an architecture test that enforces consistent resource name prefixes in E2E tests.
 
-  Before generating, examine the project context to determine:
-  - The primary language and test framework
-  - Where E2E tests are located (e2e/ directory or step definition files)
-  - The resource name variables already used in the project's e2e tests — infer the
-    actual prefix convention from sample files if one already exists
-  - Which variable names indicate resource identifiers: TableName, QueueName, BucketName,
-    TopicName, FunctionName, ParameterName, SecretName, name, bucket, queue, table, etc.
+    The rule: resource names used in E2E tests must use a consistent prefix so they:
+    1. Are clearly identifiable as test resources
+    2. Do not collide with each other or with real resources
+    3. Can be cleaned up reliably
 
-  Generate the architecture test in the same language as the project.
-  Scan step definition files and e2e test constants for resource name assignments.
+    The naming convention depends on the language/framework:
+    - Python/Go: `e2e-<operation>` for resource names (e.g. `e2e-create-table`) or `/e2e/<operation>`
+      for path-style names (e.g. SSM parameter `/e2e/put-param-test`)
+    - TypeScript: `test-<service>-<n>` (e.g. `test-dynamodb-1`)
+    - Java: `test-<service>-<n>` or `e2e-<operation>`
 
-  The architecture test should:
-  - Use a ratchet-style approach: count violations and fail if count increases above the
-    threshold found today (prevents new violations without requiring immediate cleanup)
-  - Report: filename:line_number — resource name "X" does not use expected prefix
-  - Fail with a summary
+    Before generating, examine the project context to determine:
+    - The primary language and test framework
+    - Where E2E tests are located (e2e/ directory or step definition files)
+    - The resource name variables already used in the project's e2e tests — infer the
+      actual prefix convention from sample files if one already exists
+    - Which variable names indicate resource identifiers: TableName, QueueName, BucketName,
+      TopicName, FunctionName, ParameterName, SecretName, name, bucket, queue, table, etc.
 
-  Name the output file appropriately for the language.
-  Derive e2e directories from the project context provided.
-claude_md_section: |
-  ## E2E Resource Naming
+    Generate the architecture test in the same language as the project.
+    Scan step definition files and e2e test constants for resource name assignments.
 
-  All resources created in E2E tests must use a consistent prefix:
-  - Use `e2e-<operation>` for resource names (e.g. `e2e-create-table`, `e2e-delete-queue`)
-  - Use `/e2e/<operation>` for path-style names (e.g. `/e2e/put-param-test`)
+    The architecture test should:
+    - Use a ratchet-style approach: count violations and fail if count increases above the
+      threshold found today (prevents new violations without requiring immediate cleanup)
+    - Report: filename:line_number — resource name "X" does not use expected prefix
+    - Fail with a summary
 
-  This ensures resources are identifiable as test artifacts and do not collide across
-  test runs or with production resources.
+    Name the output file appropriately for the language.
+    Derive e2e directories from the project context provided.
+  claude_md_section: |
+    ## E2E Resource Naming
+
+    All resources created in E2E tests must use a consistent prefix so they are identifiable
+    as test artifacts and do not collide with production resources or other test runs.
+
+    ### Convention
+
+    | Name style | Pattern | Example |
+    |---|---|---|
+    | Standard resource name | `e2e-<operation>` | `e2e-create-table`, `e2e-delete-queue` |
+    | Path-style name | `/e2e/<operation>` | `/e2e/put-param-test` |
+
+    ### Why
+
+    Without a consistent prefix:
+    - A test cleanup routine cannot reliably distinguish test resources from production resources
+    - Parallel test runs collide on the same resource name, causing flaky failures
+    - Orphaned test resources are indistinguishable from real ones
+
+    ### Examples
+
+    ```python
+    # constants.py — GOOD
+    TEST_TABLE = "e2e-create-table"
+    TEST_QUEUE = "e2e-send-message"
+    TEST_PARAM = "/e2e/put-parameter"
+
+    # constants.py — BAD (no prefix, collides with production)
+    TEST_TABLE = "my-table"
+    TEST_QUEUE = "orders"
+    ```
+
+    ### Edge cases
+
+    - Resource names that include a random suffix for isolation (`e2e-create-{uuid}`) are fine
+      as long as the `e2e-` prefix is still present
+    - Names in `client.py` that are constructed at runtime must still start with `e2e-`
+    - Path-style names (e.g. SSM parameters) use `/e2e/` as the root prefix
+
+post_propose:
+  insert: before:Implementation
+  tasks:
+    - "Run `pytest tests/architecture/test_e2e_resource_naming.py -v` — must pass before\
+      \ implementation is complete"
+    - "Do not remove, skip, or modify the e2e-resource-naming architecture test without\
+      \ explicit user approval"

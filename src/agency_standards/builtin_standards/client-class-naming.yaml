@@ -1,50 +1,86 @@
 id: client-class-naming
 name: TestClient Class Naming
 description: client.py in step packages must define exactly one PascalCaseTestClient class named after the service
-languages: [python, go, typescript, java]
-output_file: test_client_class_naming
 tags: [bdd]
-prompt: |
-  Generate an architecture test that enforces naming and structure of TestClient classes
-  in BDD step packages.
 
-  The rule: each `client.py` (or equivalent) file in a step package must:
-  1. Define exactly one class
-  2. That class must be named `<PascalCaseService>TestClient`
-     - The service name comes from the parent step package directory name
-     - The directory name is converted from snake_case to PascalCase
-     - Examples: `dynamodb/` → `DynamodbTestClient`, `ssm/` → `SsmTestClient`,
-       `event_bridge/` → `EventBridgeTestClient`
-  3. The class must be the only public class in the file
+condition:
+  languages: [python, go, typescript, java]
+  features: [bdd]
 
-  Before generating, examine the project context to determine:
-  - The primary language and BDD framework
-  - Where client.py files exist in the step directory structure (infer from project context)
-  - The actual service directory names used in this project
-  - Whether the project uses a different TestClient naming convention (infer from samples
-    and adapt accordingly)
+post_init:
+  output_file: test_client_class_naming
+  prompt: |
+    Generate an architecture test that enforces naming and structure of TestClient classes
+    in BDD step packages.
 
-  Generate the architecture test in the same language as the project.
+    The rule: each `client.py` (or equivalent) file in a step package must:
+    1. Define exactly one class
+    2. That class must be named `<PascalCaseService>TestClient`
+       - The service name comes from the parent step package directory name
+       - The directory name is converted from snake_case to PascalCase
+       - Examples: `dynamodb/` → `DynamodbTestClient`, `ssm/` → `SsmTestClient`,
+         `event_bridge/` → `EventBridgeTestClient`
+    3. The class must be the only public class in the file
 
-  The architecture test should:
-  - Find all client.py files in step/e2e directories
-  - Check that each defines exactly one class with the correct PascalCase name
-  - Collect all violations before failing
-  - Report: filepath — expected class "DynamodbTestClient" but found ["X", "Y"]
-  - Fail with a summary
+    Before generating, examine the project context to determine:
+    - The primary language and BDD framework
+    - Where client.py files exist in the step directory structure (infer from project context)
+    - The actual service directory names used in this project
+    - Whether the project uses a different TestClient naming convention (infer from samples
+      and adapt accordingly)
 
-  Name the output file appropriately for the language.
-  Derive step directories from the project context provided.
-claude_md_section: |
-  ## TestClient Class Naming
+    Generate the architecture test in the same language as the project.
 
-  Each `client.py` in a step package defines exactly one class named after the service:
+    The architecture test should:
+    - Find all client.py files in step/e2e directories
+    - Check that each defines exactly one class with the correct PascalCase name
+    - Collect all violations before failing
+    - Report: filepath — expected class "DynamodbTestClient" but found ["X", "Y"]
+    - Fail with a summary
 
-  ```
-  e2e/dynamodb/client.py       → class DynamodbTestClient
-  e2e/ssm/client.py            → class SsmTestClient
-  e2e/event_bridge/client.py   → class EventBridgeTestClient
-  ```
+    Name the output file appropriately for the language.
+    Derive step directories from the project context provided.
+  claude_md_section: |
+    ## TestClient Class Naming
 
-  The class encapsulates all session/SDK helpers for that service. Step files call
-  methods on this class rather than making SDK calls directly.
+    Each `client.py` in a step package must define exactly one class named after the service
+    it wraps, following the pattern `<PascalCaseService>TestClient`.
+
+    ### Naming pattern
+
+    The directory name (snake_case) is converted to PascalCase and `TestClient` is appended:
+
+    ```
+    e2e/dynamodb/client.py       → class DynamodbTestClient
+    e2e/ssm/client.py            → class SsmTestClient
+    e2e/event_bridge/client.py   → class EventBridgeTestClient
+    e2e/secrets_manager/client.py → class SecretsManagerTestClient
+    ```
+
+    ### Why
+
+    A consistent naming convention makes it immediately clear which class to import in a step
+    file and what service it wraps. It also enforces the boundary between step logic (what the
+    test does) and transport logic (how it communicates with the service), since all SDK
+    interaction is concentrated in one named, predictable class.
+
+    ### What belongs in the TestClient
+
+    - Session/SDK client initialisation
+    - All calls to the service under test (create, read, update, delete operations)
+    - Retry logic, waiter calls, and response parsing specific to that service
+    - Helper methods that accept session/client as a parameter (see `no-session-helpers-in-constants`)
+
+    ### What does not belong in the TestClient
+
+    - Step logic (assertions, scenario state)
+    - Constants (use `constants.py`)
+    - Cross-service orchestration (use a higher-level fixture or conftest)
+
+post_propose:
+  insert: before:Implementation
+  tasks:
+    - "Run `pytest tests/architecture/test_client_class_naming.py -v` — must pass before\
+      \ implementation is complete"
+    - "Do not remove, skip, or modify the client-class-naming architecture test without\
+      \ explicit user approval"

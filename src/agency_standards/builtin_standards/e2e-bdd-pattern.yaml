@@ -1,44 +1,102 @@
 id: e2e-bdd-pattern
 name: E2E Tests Use BDD Pattern
 description: E2E test runner files must use the BDD scenarios() wiring pattern, not class-based test structures
-languages: [python, go, typescript, java]
-output_file: test_e2e_bdd_pattern
 tags: [bdd, e2e]
-prompt: |
-  Generate an architecture test that enforces BDD wiring in E2E test files.
 
-  The rule has two parts:
-  1. Every E2E test runner file must wire in Gherkin scenarios — for pytest-bdd this means
-     calling `scenarios()`, for Cucumber-based frameworks this means the runner references
-     the feature files
-  2. E2E test files must NOT contain Test* classes — E2E tests use BDD (Given/When/Then),
-     not class-based unit-test structures
+condition:
+  languages: [python, go, typescript, java]
+  features: [bdd]
 
-  Before generating, examine the project context to determine:
-  - The primary language and BDD framework in use (pytest-bdd, behave, Godog, Cucumber.js,
-    Cucumber Java, etc.) — infer from build file and sample test files
-  - The location of E2E test files (e2e/ directory or equivalent)
-  - The naming pattern for E2E runner files (test_scenarios.py, *_test.go, *.feature, etc.)
-  - What the BDD wiring call looks like for this framework
+post_init:
+  output_file: test_e2e_bdd_pattern
+  prompt: |
+    Generate an architecture test that enforces BDD wiring in E2E test files.
 
-  Generate the architecture test in the same language as the project.
+    The rule has two parts:
+    1. Every E2E test runner file must wire in Gherkin scenarios — for pytest-bdd this means
+       calling `scenarios()`, for Cucumber-based frameworks this means the runner references
+       the feature files
+    2. E2E test files must NOT contain Test* classes — E2E tests use BDD (Given/When/Then),
+       not class-based unit-test structures
 
-  The architecture test should:
-  - Scan the e2e test directory
-  - Flag runner files that lack the BDD wiring call
-  - Flag any Test* class definitions in e2e files
-  - Collect all violations before failing
-  - Report: filename — missing BDD wiring / unexpected test class found
-  - Fail with a summary
+    Before generating, examine the project context to determine:
+    - The primary language and BDD framework in use (pytest-bdd, behave, Godog, Cucumber.js,
+      Cucumber Java, etc.) — infer from build file and sample test files
+    - The location of E2E test files (e2e/ directory or equivalent)
+    - The naming pattern for E2E runner files (test_scenarios.py, *_test.go, *.feature, etc.)
+    - What the BDD wiring call looks like for this framework
 
-  Name the output file appropriately for the language.
-  Derive e2e directories from the project context provided.
-claude_md_section: |
-  ## E2E Tests Use BDD Pattern
+    Generate the architecture test in the same language as the project.
 
-  E2E tests must use Gherkin BDD (Given/When/Then), not class-based test structures:
-  - Every E2E test runner file must wire in feature scenarios (e.g. `scenarios()` in pytest-bdd)
-  - E2E files must not define Test* classes
-  - Step definitions live in given/, when/, then/ directories
+    The architecture test should:
+    - Scan the e2e test directory
+    - Flag runner files that lack the BDD wiring call
+    - Flag any Test* class definitions in e2e files
+    - Collect all violations before failing
+    - Report: filename — missing BDD wiring / unexpected test class found
+    - Fail with a summary
 
-  Unit tests use AAA. E2E tests use BDD. These are not interchangeable.
+    Name the output file appropriately for the language.
+    Derive e2e directories from the project context provided.
+  claude_md_section: |
+    ## E2E Tests Use BDD Pattern
+
+    E2E tests use Gherkin (Given/When/Then). Unit and integration tests use AAA
+    (Arrange/Act/Assert). These patterns are not interchangeable.
+
+    ### Why
+
+    BDD scenarios serve as executable specification — they describe behaviour in
+    business-readable language, independent of implementation. Class-based test structures
+    (`class TestCreateTable`) describe implementation details and are suited for unit tests.
+    Mixing the two in the E2E layer produces tests that are neither readable as specification
+    nor useful as unit tests.
+
+    ### Required structure for E2E runners (pytest-bdd)
+
+    ```python
+    # e2e/dynamodb/test_scenarios.py — GOOD
+    from pytest_bdd import scenarios
+
+    scenarios("../features/dynamodb.feature")
+    ```
+
+    ```python
+    # e2e/dynamodb/test_scenarios.py — BAD (class-based in E2E)
+    class TestDynamoDBCreate:
+        def test_create_table(self, session):
+            ...
+    ```
+
+    ### Step definitions
+
+    Steps live in `given/`, `when/`, `then/` directories, one step per file:
+
+    ```
+    e2e/dynamodb/
+    ├── features/
+    │   └── dynamodb.feature
+    ├── given/
+    │   └── a_table_exists.py
+    ├── when/
+    │   └── i_delete_the_table.py
+    ├── then/
+    │   └── the_table_does_not_exist.py
+    ├── client.py
+    └── test_scenarios.py
+    ```
+
+    ### Summary
+
+    | Layer | Pattern | Structure |
+    |---|---|---|
+    | Unit / integration tests | AAA | `class TestFoo` with `def test_*` methods |
+    | E2E tests | BDD | `.feature` files + `scenarios()` runner + step dirs |
+
+post_propose:
+  insert: before:Implementation
+  tasks:
+    - "Run `pytest tests/architecture/test_e2e_bdd_pattern.py -v` — must pass before\
+      \ implementation is complete"
+    - "Do not remove, skip, or modify the e2e-bdd-pattern architecture test without explicit\
+      \ user approval"

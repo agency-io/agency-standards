@@ -1,58 +1,95 @@
 id: no-magic-strings
 name: No Magic Strings in Assertions
 description: Assertion comparisons must use named expected/actual variables, not inline literals
-languages: [python, go, typescript, java]
 tags: [general]
-output_file: test_no_magic_strings
-prompt: |
-  Generate an architecture test that forbids magic string or number literals directly
-  inside assertion statements in test files.
 
-  The rule: whenever an assertion compares two values, neither side should be a raw string
-  or number literal. The value must be extracted to a named variable that makes intent clear.
+condition:
+  languages: [python, go, typescript, java]
 
-  Naming convention for the variables:
-  - Python: expected_* and actual_*
-  - Go: expected* and got* (or want* and got*)
-  - TypeScript: expected* and actual*
-  - Java: expected* and actual*
+post_init:
+  output_file: test_no_magic_strings
+  prompt: |
+    Generate an architecture test that forbids magic string or number literals directly
+    inside assertion statements in test files.
 
-  Before generating, examine the project context to determine:
-  - The primary language
-  - The test framework and assertion style in use (assert statements, self.assertEqual,
-    t.Equal, expect().toBe(), assertEquals, etc.) — infer from sample test files
-  - The test file naming pattern and directories
-  - Whether the project mixes assertion styles across files
+    The rule: whenever an assertion compares two values, neither side should be a raw string
+    or number literal. The value must be extracted to a named variable that makes intent clear.
 
-  Exceptions that are allowed (do NOT flag):
-  - Null/nil/None checks (assert x is None, assertNull(x), etc.)
-  - Boolean truthiness checks (assert x, assertTrue(x))
-  - Length/count checks where the number is obvious (assert len(x) == 2)
-  - Key/field presence checks ("key" in result, hasOwnProperty, containsKey)
+    Naming convention for the variables:
+    - Python: expected_* and actual_*
+    - Go: expected* and got* (or want* and got*)
+    - TypeScript: expected* and actual*
+    - Java: expected* and actual*
 
-  Generate the architecture test in the same language as the project.
-  Use static analysis appropriate for that language to detect violations.
+    Before generating, examine the project context to determine:
+    - The primary language
+    - The test framework and assertion style in use (assert statements, self.assertEqual,
+      t.Equal, expect().toBe(), assertEquals, etc.) — infer from sample test files
+    - The test file naming pattern and directories
+    - Whether the project mixes assertion styles across files
 
-  The architecture test should:
-  - Collect all violations before failing
-  - Report: filename:line_number — test_name — literal value found in assertion
-  - Fail with a clear summary
+    Exceptions that are allowed (do NOT flag):
+    - Null/nil/None checks (assert x is None, assertNull(x), etc.)
+    - Boolean truthiness checks (assert x, assertTrue(x))
+    - Length/count checks where the number is obvious (assert len(x) == 2)
+    - Key/field presence checks ("key" in result, hasOwnProperty, containsKey)
 
-  Name the output file appropriately for the language.
-  Derive test directories and naming patterns from the project context provided.
-claude_md_section: |
-  ## No Magic Strings in Assertions
+    Generate the architecture test in the same language as the project.
+    Use static analysis appropriate for that language to detect violations.
 
-  Extract comparison values to named variables before asserting:
+    The architecture test should:
+    - Collect all violations before failing
+    - Report: filename:line_number — test_name — literal value found in assertion
+    - Fail with a clear summary
 
-  ```python
-  # Bad
-  assert account["status"] == "active"
+    Name the output file appropriately for the language.
+    Derive test directories and naming patterns from the project context provided.
+  claude_md_section: |
+    ## No Magic Strings in Assertions
 
-  # Good
-  expected_status = "active"
-  actual_status = account["status"]
-  assert actual_status == expected_status, f"Expected {expected_status!r} but got {actual_status!r}"
-  ```
+    Extract comparison values to named variables before asserting. Never inline a raw
+    string or number literal directly in an assertion.
 
-  The same rule applies in Go (want/got), TypeScript (expected/actual), and Java (expected/actual).
+    ### Why
+
+    A magic string in an assertion tells you nothing about intent. `== "active"` is opaque;
+    `== expected_status` tells you what the value represents. When the test fails, a named
+    variable also produces a clearer error message because you can include both names.
+
+    ### Pattern
+
+    ```python
+    # Bad — intent unclear, failure message useless
+    assert account["status"] == "active"
+
+    # Good — intent clear, failure message informative
+    expected_status = "active"
+    actual_status = account["status"]
+    assert actual_status == expected_status, (
+        f"Expected status {expected_status!r} but got {actual_status!r}"
+    )
+    ```
+
+    ### By language
+
+    | Language | Expected variable | Actual variable |
+    |---|---|---|
+    | Python | `expected_*` | `actual_*` |
+    | Go | `want` / `expected` | `got` |
+    | TypeScript | `expected` | `actual` / `result` |
+    | Java | `expected` | `actual` |
+
+    ### Exceptions — literals are permitted
+
+    - **Null/nil/None checks**: `assert result is None`
+    - **Boolean checks**: `assert response.ok`
+    - **Count checks where the value is self-evident**: `assert len(items) == 0`
+    - **Key/field presence checks**: `assert "id" in response`
+
+post_propose:
+  insert: before:Implementation
+  tasks:
+    - "Run `pytest tests/architecture/test_no_magic_strings.py -v` — must pass before\
+      \ implementation is complete"
+    - "Do not remove, skip, or modify the no-magic-strings architecture test without\
+      \ explicit user approval"
