@@ -35,7 +35,7 @@ def run_task_injection(phase_name: str, phase_attr: str, change_id: str, target:
     def has_phase(s: Standard) -> bool:
         return getattr(s, phase_attr, None) is not None
 
-    applicable = [s for s in load_all() if evaluate_condition(s, ctx) and has_phase(s)]
+    applicable = [s for s in load_all(target) if evaluate_condition(s, ctx) and has_phase(s)]
 
     if not applicable:
         console.print(
