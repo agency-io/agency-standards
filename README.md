@@ -13,13 +13,24 @@ uv tool install agency-standards
 ## How it works
 
 `agency-standards` complements the [OpenSpec](https://github.com/agency-io/openspec) workflow.
-Run it after each OpenSpec command:
+Run it before and after each OpenSpec command:
 
 ```
-openspec init      →  agency-standards post-init
-openspec propose   →  agency-standards post-propose <change-id>
-openspec apply     →  (agent follows the augmented tasks.md)
-openspec archive   →  agency-standards post-archive <change-id>
+agency-standards pre-init
+openspec init
+agency-standards post-init
+
+agency-standards pre-propose <change-id>
+openspec propose
+agency-standards post-propose <change-id>
+
+agency-standards pre-apply <change-id>
+# (agent implements the change)
+agency-standards post-apply <change-id>
+
+agency-standards pre-archive <change-id>
+openspec archive
+agency-standards post-archive <change-id>
 ```
 
 ## Quick Start
@@ -39,24 +50,31 @@ agency-standards post-init --yes        # accept all applicable standards (CI-fr
 
 # After creating a proposal — inject standard tasks into tasks.md
 agency-standards post-propose my-change-id
-
-# Shorthand for post-propose (default command)
-agency-standards my-change-id
 ```
 
 ## Commands
 
 | Command | Description |
 |---|---|
-| `list [--filter TAG] [--verbose]` | List all available standards. Pass `--filter bdd` to narrow by tag; `--verbose` to show full docs. |
-| `post-init [--yes] [TARGET]` | Interactively select standards, write `CLAUDE.md`, install skills. `--yes` skips the prompt. Run after `openspec init`. |
-| `post-propose <CHANGE-ID> [TARGET]` | Inject standard tasks into the change's `tasks.md` via Claude. Run after `openspec propose`. |
-| `post-apply <CHANGE-ID> [TARGET]` | *(Not yet implemented)* Run after `openspec apply`. |
-| `post-archive <CHANGE-ID> [TARGET]` | *(Not yet implemented)* Run after `openspec archive`. |
+| `list [--filter TAG] [--verbose]` | List all standards with their phases and docs. |
+| `pre-init [--yes] [TARGET]` | Run pre-init hooks before `openspec init`. |
+| `post-init [--yes] [TARGET]` | Interactively select standards, copy YAMLs into `standards/`, write `CLAUDE.md`, install skills. `--yes` skips the prompt. |
+| `pre-propose <CHANGE-ID> [TARGET]` | Inject pre-propose standard tasks into `tasks.md` via Claude. |
+| `post-propose <CHANGE-ID> [TARGET]` | Inject post-propose standard tasks into `tasks.md` via Claude. |
+| `pre-apply <CHANGE-ID> [TARGET]` | Inject pre-apply standard tasks into `tasks.md` via Claude. |
+| `post-apply <CHANGE-ID> [TARGET]` | Inject post-apply standard tasks into `tasks.md` via Claude. |
+| `pre-archive <CHANGE-ID> [TARGET]` | Inject pre-archive standard tasks into `tasks.md` via Claude. |
+| `post-archive <CHANGE-ID> [TARGET]` | Inject post-archive standard tasks into `tasks.md` via Claude. |
+
+### `standards/` — project-owned standards
+
+When you run `post-init`, selected standard YAMLs are copied into a `standards/` directory at
+the project root. The project owns its standards from that point — edit them freely, or add
+new `.yaml` files for project-specific standards. They are loaded automatically.
 
 ### `.agency-standards.yaml`
 
-`post-init` persists the selected standards to `.agency-standards.yaml` at the project root:
+`post-init` persists the selected standard IDs to `.agency-standards.yaml`:
 
 ```yaml
 standards:
@@ -66,9 +84,8 @@ standards:
     - one-step-per-file
 ```
 
-Commit this file — it records which standards your team has adopted. On subsequent `post-init`
-runs, previously-selected standards are pre-checked and new ones are unchecked (so new standards
-are opt-in).
+Commit both `standards/` and `.agency-standards.yaml`. On subsequent `post-init` runs,
+previously-adopted standards are pre-checked and new ones are unchecked (opt-in).
 
 ## What `post-propose` does
 
@@ -84,8 +101,8 @@ skip or remove them without explicit user instruction.
 
 ## Standards
 
-Each standard declares which lifecycle phases it participates in, a condition that controls
-whether it applies to a given project, and phase-specific behaviour.
+Each standard declares which lifecycle phases it participates in (visible via `agency-standards list`),
+a condition controlling whether it applies to a given project, and phase-specific behaviour.
 
 ### Builtin Standards
 
@@ -94,14 +111,15 @@ whether it applies to a given project, and phase-specific behaviour.
 | ID | Description |
 |---|---|
 | `aaa-comments` | Every test must have explicit Arrange/Act/Assert comment sections |
+| `adr` | ADRs must be recorded for significant decisions; checks format and lifecycle |
 | `assertion-messages` | Every assertion must include a human-readable failure message |
-| `no-magic-strings` | Assertion comparisons must use named variables, not inline literals |
-| `no-bare-except` | Error handlers must always specify the exception type |
 | `file-length` | Source files must not exceed 500 lines |
 | `file-naming` | Test files must follow naming patterns describing what is tested and under what condition |
+| `no-bare-except` | Error handlers must always specify the exception type |
+| `no-magic-strings` | Assertion comparisons must use named variables, not inline literals |
+| `no-skipped-tests` | Tests must never use skip/xfail/disabled markers |
 | `one-class-per-file` | Each source file should define at most one public class |
 | `one-test-class-per-file` | Each test file should contain at most one test class |
-| `no-skipped-tests` | Tests must never use skip/xfail/disabled markers |
 
 #### BDD / E2E
 
@@ -121,17 +139,20 @@ whether it applies to a given project, and phase-specific behaviour.
 
 ### Custom Standards
 
-Define your own standards in `~/.agency-standards/standards/` using the new YAML schema:
+Add a `.yaml` file to `standards/` in your project. It is loaded automatically alongside
+adopted builtins — no configuration needed.
 
 ```yaml
 id: my-standard
 name: My Standard
 description: One-line description
+tags: [general]
 
 condition:
   languages: [python]           # optional — omit to apply to all projects
   # project_type: [api, cli]   # optional
   # dependencies: [pydantic]   # optional — checks pyproject.toml
+  # features: [bdd]            # optional — detected features
 
 post_init:
   output_file: test_my_standard
@@ -153,9 +174,15 @@ post_propose:
 - `languages` — project must use at least one of these languages
 - `project_type` — `api`, `cli`, or `library`
 - `dependencies` — all listed packages must be present in the project's dependencies
-- `features` — detected features, e.g. `bdd`
+- `features` — detected features, e.g. `bdd`, `openspec`
 
-**Insert positions** for `post_propose`:
+**Phase blocks** (declare any combination):
+- `pre_init` / `post_init` — writes `claude_md_section` to `CLAUDE.md`, installs skills
+- `pre_propose` / `post_propose` — injects tasks into `tasks.md` via Claude
+- `pre_apply` / `post_apply` — injects tasks into `tasks.md` via Claude
+- `pre_archive` / `post_archive` — injects tasks into `tasks.md` via Claude
+
+**Insert positions** for task-injection phases:
 - `prepend` — before all existing tasks
 - `append` — after all existing tasks
 - `before:<Section Name>` — before the named section heading
@@ -164,7 +191,7 @@ post_propose:
 ## Requirements
 
 - Python 3.11+
-- An Anthropic API key (`ANTHROPIC_API_KEY` environment variable) — used by `post-propose`
+- An Anthropic API key (`ANTHROPIC_API_KEY` environment variable) — used by task-injection commands
 - [OpenSpec](https://github.com/agency-io/openspec) — the workflow this tool complements
 
 ## License
